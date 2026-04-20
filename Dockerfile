@@ -1,15 +1,18 @@
-FROM php:8.2-apache
+FROM php:8.2-fpm
 
-# Install PHP extensions
-RUN apt-get update && apt-get install -y \
+# Install PHP extensions and dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     zip \
     unzip \
     libpq-dev \
     && docker-php-ext-install pdo pdo_mysql pdo_pgsql \
-    && a2dismod mpm_event \
-    && a2enmod mpm_prefork rewrite
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Nginx
+RUN apt-get update && apt-get install -y --no-install-recommends nginx \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -31,23 +34,38 @@ RUN mkdir -p /app/storage/logs /app/storage/app /app/bootstrap/cache && \
     chown -R www-data:www-data /app/storage /app/bootstrap/cache && \
     chmod -R 775 /app/storage /app/bootstrap/cache
 
-# Configure Apache
-RUN echo '<VirtualHost *:80>\n\
-    DocumentRoot /app/public\n\
-    <Directory /app/public>\n\
-        Options Indexes FollowSymLinks\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf && \
-    a2dissite 000-default || true && \
-    a2ensite 000-default
+# Configure Nginx
+RUN echo 'server {\n\
+    listen 80 default_server;\n\
+    listen [::]:80 default_server;\n\
+    server_name _;\n\
+    root /app/public;\n\
+    index index.php;\n\
+    client_max_body_size 20M;\n\
+    location / {\n\
+        try_files $uri $uri/ /index.php?$query_string;\n\
+    }\n\
+    location ~ \\.php$ {\n\
+        fastcgi_pass 127.0.0.1:9000;\n\
+        fastcgi_index index.php;\n\
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
+        include fastcgi_params;\n\
+    }\n\
+}' > /etc/nginx/sites-available/default && \
+    rm -f /etc/nginx/sites-enabled/default && \
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
 # Expose port
 EXPOSE 80
 
-# Run migrations and start Apache
-RUN echo '#!/bin/bash\nset -e\necho "Starting Laravel migrations..."\nphp /app/artisan migrate --force\necho "Starting Apache..."\nexec apache2ctl -D FOREGROUND' > /app/docker-entrypoint.sh && \
+# Run migrations and start services
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Starting Laravel migrations..."\n\
+php /app/artisan migrate --force\n\
+echo "Starting PHP-FPM and Nginx..."\n\
+php-fpm -D\n\
+exec nginx -g "daemon off;"' > /app/docker-entrypoint.sh && \
     chmod +x /app/docker-entrypoint.sh
 
 CMD ["/app/docker-entrypoint.sh"]
