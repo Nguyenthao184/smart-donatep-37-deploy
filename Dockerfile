@@ -17,13 +17,18 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 
 # Copy backend files
-COPY backend/composer.json backend/composer.lock* ./
-RUN composer install --no-dev --optimize-autoloader
-
 COPY backend/ ./
+
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
 
 # Set permissions
 RUN chown -R www-data:www-data /app
+
+# Create storage directories
+RUN mkdir -p /app/storage/logs /app/storage/app /app/bootstrap/cache && \
+    chown -R www-data:www-data /app/storage /app/bootstrap/cache && \
+    chmod -R 775 /app/storage /app/bootstrap/cache
 
 # Configure Apache
 RUN echo '<VirtualHost *:80>\n\
@@ -38,5 +43,8 @@ RUN echo '<VirtualHost *:80>\n\
 # Expose port
 EXPOSE 80
 
-# Run Laravel migrations and start server
-CMD php artisan migrate --force && apache2-foreground
+# Run migrations and start Apache
+RUN echo '#!/bin/bash\nset -e\nphp /app/artisan migrate --force\napache2-foreground' > /app/docker-entrypoint.sh && \
+    chmod +x /app/docker-entrypoint.sh
+
+CMD ["/app/docker-entrypoint.sh"]
