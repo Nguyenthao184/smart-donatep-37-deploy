@@ -23,6 +23,9 @@ WORKDIR /app
 # Copy backend files
 COPY backend/ ./
 
+# Copy .env if exists, otherwise create from .env.example
+RUN if [ -f .env ]; then echo "Using existing .env"; else cp .env.example .env 2>/dev/null || echo "APP_KEY=base64:PLACEHOLDER" > .env; fi
+
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
@@ -61,8 +64,12 @@ EXPOSE 80
 # Run migrations and start services
 RUN echo '#!/bin/bash\n\
 set -e\n\
-echo "Starting Laravel migrations..."\n\
-php /app/artisan migrate --force\n\
+echo "Generating Laravel app key..."\n\
+php /app/artisan key:generate --force 2>/dev/null || true\n\
+echo "Clearing config cache..."\n\
+php /app/artisan config:clear\n\
+echo "Running migrations..."\n\
+php /app/artisan migrate --force || true\n\
 echo "Starting PHP-FPM and Nginx..."\n\
 php-fpm -D\n\
 exec nginx -g "daemon off;"' > /app/docker-entrypoint.sh && \
