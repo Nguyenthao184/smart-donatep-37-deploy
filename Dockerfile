@@ -66,8 +66,8 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 echo "Generating Laravel app key..."\n\
 php /app/artisan key:generate --force 2>/dev/null || true\n\
-echo "Clearing config cache..."\n\
-php /app/artisan config:clear\n\
+echo "Clearing all caches..."\n\
+php /app/artisan optimize:clear\n\
 echo "Running migrations..."\n\
 php /app/artisan migrate --force || true\n\
 echo "Starting PHP-FPM and Nginx..."\n\
