@@ -81,9 +81,7 @@ class CampaignController extends Controller
             $images[] = $path;
         }
 
-        $images = collect($images)->map(function ($img) {
-            return asset('storage/' . $img);
-        });
+        $images = collect($images)->map(fn($img) => $this->resolveMediaUrl($img));
 
         // 6. Tạo mã chuyển tiền UNIQUE
         do {
@@ -230,9 +228,7 @@ class CampaignController extends Controller
 
         $images = json_decode($chienDich->hinh_anh, true) ?? [];
 
-        $images = array_map(function ($img) {
-            return asset('storage/' . $img);
-        }, $images);
+        $images = array_values(array_filter(array_map(fn($img) => $this->resolveMediaUrl($img), $images)));
 
         $pageSize = 6;
 
@@ -285,7 +281,7 @@ class CampaignController extends Controller
             'to_chuc' => [
                 'id' => $chienDich->toChuc->id ?? null,
                 'ten_to_chuc' => $chienDich->toChuc->ten_to_chuc ?? null,
-                'logo' => $chienDich->toChuc->logo ? asset('storage/' . $chienDich->toChuc->logo) : null,
+                'logo' => $this->resolveMediaUrl($chienDich->toChuc->logo ?? null),
                 'mo_ta' => $chienDich->toChuc->mo_ta ?? null,
                 'dia_chi' => $chienDich->toChuc->dia_chi ?? null,
                 'email' => $chienDich->toChuc->email ?? null,
@@ -380,7 +376,7 @@ class CampaignController extends Controller
         return [
             'id' => $item->id,
             'ten_chien_dich' => $item->ten_chien_dich,
-            'hinh_anh' => $image ? asset('storage/' . $image) : null,
+            'hinh_anh' => $this->resolveMediaUrl($image),
             'so_tien_da_nhan' => $soTien,
             'muc_tieu_tien' => $mucTieu,
             'phan_tram' => $phanTram,
@@ -397,7 +393,7 @@ class CampaignController extends Controller
             ->select('id', 'ten_danh_muc', 'hinh_anh')
             ->get()
             ->map(function ($item) {
-                $item->hinh_anh = asset('storage/' . $item->hinh_anh);
+                $item->hinh_anh = $this->resolveMediaUrl($item->hinh_anh);
                 return $item;
             });
 
@@ -434,5 +430,15 @@ class CampaignController extends Controller
         return response()->json(
             $query->get(['id', 'lat', 'lng'])
         );
+    }
+
+    private function resolveMediaUrl(?string $value): ?string
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $raw = trim($value);
+        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : asset('storage/' . ltrim($raw, '/'));
     }
 }

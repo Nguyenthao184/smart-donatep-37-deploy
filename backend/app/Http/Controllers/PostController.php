@@ -82,11 +82,7 @@ class PostController extends Controller
                 : null;
 
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-            // $post->hinh_anh_urls = array_values(array_map(static fn($p) => asset('storage/' . $p), $paths));
-            $post->hinh_anh_urls = array_values(array_map(
-                static fn($p) => (str_starts_with($p, 'http') ? $p : asset('storage/' . $p)),
-                $paths
-            ));
+            $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
             $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
 
             $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
@@ -114,11 +110,7 @@ class PostController extends Controller
             ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
             : null;
         $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-        // $post->hinh_anh_urls = array_values(array_map(static fn($p) => asset('storage/' . $p), $paths));
-        $post->hinh_anh_urls = array_values(array_map(
-            static fn($p) => (str_starts_with($p, 'http') ? $p : asset('storage/' . $p)),
-            $paths
-        ));
+        $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
         $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
 
         $this->decoratePostLikeFields($post);
@@ -168,11 +160,7 @@ class PostController extends Controller
                 : null;
 
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-            // $post->hinh_anh_urls = array_values(array_map(static fn($p) => asset('storage/' . $p), $paths));
-            $post->hinh_anh_urls = array_values(array_map(
-                static fn($p) => (str_starts_with($p, 'http') ? $p : asset('storage/' . $p)),
-                $paths
-            ));
+            $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
             $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
 
             $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
@@ -310,7 +298,7 @@ class PostController extends Controller
             ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
             : null;
         $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-        $post->hinh_anh_urls = array_values(array_map(static fn($p) => asset('storage/' . $p), $paths));
+        $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
         $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
         unset($post->nguoiDung);
 
@@ -401,7 +389,11 @@ class PostController extends Controller
         $keepPaths = array_values(array_unique($keepPaths));
 
         foreach ($oldPaths as $op) {
-            if (!in_array($op, $keepPaths, true) && Storage::disk('public')->exists($op)) {
+            if (
+                !in_array($op, $keepPaths, true)
+                && !$this->isAbsoluteUrl($op)
+                && Storage::disk('public')->exists($op)
+            ) {
                 Storage::disk('public')->delete($op);
             }
         }
@@ -447,7 +439,7 @@ class PostController extends Controller
             ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
             : null;
         $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-        $post->hinh_anh_urls = array_values(array_map(static fn($p) => asset('storage/' . $p), $paths));
+        $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
         $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
         unset($post->nguoiDung);
 
@@ -478,7 +470,7 @@ class PostController extends Controller
 
         $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
         foreach ($paths as $p) {
-            if (is_string($p) && $p !== '' && Storage::disk('public')->exists($p)) {
+            if (is_string($p) && $p !== '' && !$this->isAbsoluteUrl($p) && Storage::disk('public')->exists($p)) {
                 Storage::disk('public')->delete($p);
             }
         }
@@ -579,11 +571,7 @@ class PostController extends Controller
                 ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
                 : null;
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-            // $post->hinh_anh_urls = array_values(array_map(static fn($p) => asset('storage/' . $p), $paths));
-            $post->hinh_anh_urls = array_values(array_map(
-                static fn($p) => (str_starts_with($p, 'http') ? $p : asset('storage/' . $p)),
-                $paths
-            ));
+            $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
             $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
 
             $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
@@ -689,6 +677,10 @@ class PostController extends Controller
         }
 
         $raw = trim($value);
+        if ($this->isAbsoluteUrl($raw)) {
+            return $raw;
+        }
+
         $path = parse_url($raw, PHP_URL_PATH);
         if (!is_string($path) || $path === '') {
             $path = $raw;
@@ -702,6 +694,21 @@ class PostController extends Controller
         }
 
         return $path;
+    }
+
+    private function resolveMediaUrl(?string $value): ?string
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $raw = trim($value);
+        return $this->isAbsoluteUrl($raw) ? $raw : asset('storage/' . ltrim($raw, '/'));
+    }
+
+    private function isAbsoluteUrl(?string $value): bool
+    {
+        return is_string($value) && preg_match('/^https?:\/\//i', trim($value)) === 1;
     }
 
     private function applyPostLikeAggregates($query): void

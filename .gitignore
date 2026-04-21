@@ -42,10 +42,18 @@ yarn.lock
 
 # Laravel/Backend
 backend/vendor/
-backend/storage/
 backend/bootstrap/cache/
 backend/public/storage
 backend/.env*
+
+# Allow committed default media in storage for seed data.
+# Keep sensitive/private runtime files ignored by default.
+backend/storage/*
+!backend/storage/app/
+backend/storage/app/*
+!backend/storage/app/public/
+!backend/storage/app/public/**
+!backend/storage/app/private/.gitignore
 
 # Frontend
 frontend/dist/

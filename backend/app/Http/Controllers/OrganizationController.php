@@ -54,11 +54,11 @@ class OrganizationController extends Controller
             ]);
 
             $org->giay_phep = $org->giay_phep 
-                ? asset('storage/' . $org->giay_phep) 
+                ? $this->resolveMediaUrl($org->giay_phep) 
                 : null;
 
             $org->logo = $org->logo 
-                ? asset('storage/' . $org->logo) 
+                ? $this->resolveMediaUrl($org->logo) 
                 : null;
 
             DB::commit();
@@ -295,7 +295,7 @@ class OrganizationController extends Controller
             return [
                 'id' => $org->id,
                 'ten_to_chuc' => $org->ten_to_chuc,
-                'logo' => $org->logo ? asset('storage/' . $org->logo) : null,
+                'logo' => $this->resolveMediaUrl($org->logo),
                 'dia_chi' => $org->dia_chi,
                 'tong_gay_quy' => (float) $org->tong_gay_quy,
                 'so_tai_khoan' => optional($org->taiKhoanGayQuy)->so_tai_khoan,
@@ -327,7 +327,7 @@ class OrganizationController extends Controller
                 $hinhAnh = null;
                 if ($cd->hinh_anh) {
                     $arr = json_decode($cd->hinh_anh, true);
-                    $hinhAnh = isset($arr[0]) ? asset('storage/' . $arr[0]) : null;
+                    $hinhAnh = isset($arr[0]) ? $this->resolveMediaUrl($arr[0]) : null;
                 }
 
                 // % hoàn thành
@@ -395,7 +395,7 @@ class OrganizationController extends Controller
             // thông tin tổ chức
             'id' => $org->id,
             'ten_to_chuc' => $org->ten_to_chuc,
-            'logo' => $org->logo ? asset('storage/' . $org->logo) : null,
+            'logo' => $this->resolveMediaUrl($org->logo),
             'mo_ta' => $org->mo_ta,
             'dia_chi' => $org->dia_chi,
             'so_dien_thoai' => $org->so_dien_thoai,
@@ -409,7 +409,7 @@ class OrganizationController extends Controller
             'so_tai_khoan' => optional($tk)->so_tai_khoan,
             'so_du_hien_tai' => (float) optional($tk)->so_du ?? 0,
             'qr_code' => optional($tk)->qr_code 
-                ? asset('storage/' . $tk->qr_code) 
+                ? $this->resolveMediaUrl($tk->qr_code) 
                 : null,
 
             // thống kê (match UI)
@@ -493,5 +493,15 @@ class OrganizationController extends Controller
         }
 
         return $str;
+    }
+
+    private function resolveMediaUrl(?string $value): ?string
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $raw = trim($value);
+        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : asset('storage/' . ltrim($raw, '/'));
     }
 }

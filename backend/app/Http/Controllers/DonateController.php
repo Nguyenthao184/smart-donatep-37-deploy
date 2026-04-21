@@ -236,7 +236,7 @@ class DonateController extends Controller
             $images = json_decode($item->hinh_anh, true);
 
             $item->anh = isset($images[0])
-                ? asset('storage/' . $images[0])
+                ? $this->resolveMediaUrl($images[0])
                 : null;
 
             unset($item->hinh_anh);
@@ -246,6 +246,16 @@ class DonateController extends Controller
         return response()->json([
             'data' => $data
         ]);
+    }
+
+    private function resolveMediaUrl(?string $value): ?string
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $raw = trim($value);
+        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : asset('storage/' . ltrim($raw, '/'));
     }
 
     private function removeVietnameseAccents($str) {

@@ -31,18 +31,18 @@ class UserProfileController extends Controller
         $user = $user->fresh()->load('toChuc');
 
         $user->anh_dai_dien = $user->anh_dai_dien
-            ? asset('storage/' . $user->anh_dai_dien)
+            ? $this->resolveMediaUrl($user->anh_dai_dien)
             : null;
 
         if ($user->toChuc) {
             $user->toChuc->logo = $user->toChuc->logo
-                ? asset('storage/' . $user->toChuc->logo)
+                ? $this->resolveMediaUrl($user->toChuc->logo)
                 : null;
         }
 
         $taiKhoan = optional($user->toChuc)->taiKhoanGayQuy;
         if ($taiKhoan && $taiKhoan->qr_code) {
-            $taiKhoan->qr_code = asset($taiKhoan->qr_code);
+            $taiKhoan->qr_code = $this->resolveMediaUrl($taiKhoan->qr_code);
         }
 
         return response()->json([
@@ -111,12 +111,12 @@ class UserProfileController extends Controller
         $user = $user->fresh()->load('toChuc');
 
         $user->anh_dai_dien = $user->anh_dai_dien
-            ? asset('storage/' . $user->anh_dai_dien)
+            ? $this->resolveMediaUrl($user->anh_dai_dien)
             : null;
 
         if ($user->toChuc) {
             $user->toChuc->logo = $user->toChuc->logo
-                ? asset('storage/' . $user->toChuc->logo)
+                ? $this->resolveMediaUrl($user->toChuc->logo)
                 : null;
         }
 
@@ -174,7 +174,7 @@ class UserProfileController extends Controller
             ->findOrFail($id);
 
         if ($user->anh_dai_dien) {
-            $user->anh_dai_dien = asset('storage/' . $user->anh_dai_dien);
+            $user->anh_dai_dien = $this->resolveMediaUrl($user->anh_dai_dien);
         }
 
         // 2. Tổ chức
@@ -188,7 +188,7 @@ class UserProfileController extends Controller
             ->first();
 
         if ($toChuc && $toChuc->logo) {
-            $toChuc->logo = asset('storage/' . $toChuc->logo);
+            $toChuc->logo = $this->resolveMediaUrl($toChuc->logo);
         }
 
         // gộp lại đúng format yêu cầu
@@ -238,5 +238,15 @@ class UserProfileController extends Controller
             'message' => 'Cập nhật địa chỉ thành công',
             'data' => $user
         ]);
+    }
+
+    private function resolveMediaUrl(?string $value): ?string
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $raw = trim($value);
+        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : asset('storage/' . ltrim($raw, '/'));
     }
 }
