@@ -49,6 +49,7 @@ set -e\n\
 php artisan config:clear\n\
 php artisan route:clear\n\
 php artisan cache:clear\n\
+php artisan storage:link || true\n\
 php artisan migrate --force || true\n\
 php-fpm -D\n\
 nginx -g "daemon off;"' > /app/start.sh && chmod +x /app/start.sh
