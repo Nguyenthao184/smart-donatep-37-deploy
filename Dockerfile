@@ -16,9 +16,13 @@ RUN composer install --no-dev --optimize-autoloader
 
 RUN chown -R www-data:www-data /app
 
-RUN mkdir -p storage bootstrap/cache && \
-    chown -R www-data:www-data storage bootstrap/cache && \
-    chmod -R 775 storage bootstrap/cache
+RUN mkdir -p \
+    storage/framework/views \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/logs \
+    bootstrap/cache && \
+    chmod -R 777 storage bootstrap/cache
 
 # Nginx config (FIX PORT 8080)
 RUN echo 'server {\n\
