@@ -87,10 +87,17 @@ class AuthController extends Controller
 
         Cache::put('otp_limit_' . $data['email'], true, 60);
 
-        Mail::send('emails.otp', ['otp' => $otp], function ($message) use ($data) {
-            $message->to($data['email'])
-                    ->subject('Mã xác minh đăng ký');
-        });
+        try {
+            Mail::send('emails.otp', ['otp' => $otp], function ($message) use ($data) {
+                $message->to($data['email'])
+                        ->subject('Mã xác minh đăng ký');
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gửi mail thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
 
         return response()->json([
             'message' => 'OTP đã được gửi về email'
@@ -192,8 +199,8 @@ class AuthController extends Controller
         Cache::put('register_' . $email, $data, now()->addMinutes(5));
 
         Mail::send('emails.otp', ['otp' => $otp], function ($message) use ($data) {
-            $message->to($data['email'])
-                    ->subject('Mã xác minh đăng ký');
+            $message->to($email)
+                ->subject('Mã xác minh đăng ký');
         });
 
         return response()->json(['message' => 'OTP đã được gửi lại']);
