@@ -17,6 +17,7 @@ use App\Models\ThichBaiDang;
 use App\Models\User;
 use App\Notifications\BaiDangDuocThichNotification;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PostController extends Controller
@@ -32,32 +33,13 @@ class PostController extends Controller
         $location = $request->query('location'); // dia_diem (text)
         $keyword = $request->query('keyword');
 
-        $radiusKm = $request->query('radius_km'); // optional
-        $lat = $request->query('lat');
-        $lng = $request->query('lng');
-
-        $radiusKm = is_numeric($radiusKm) ? (float)$radiusKm : null;
-        $lat = is_numeric($lat) ? (float)$lat : null;
-        $lng = is_numeric($lng) ? (float)$lng : null;
-
         $query = BaiDang::query()
+
+            ->select('bai_dang.*')
             ->with(['nguoiDung'])
             ->orderByDesc('created_at');
 
         $this->applyPostLikeAggregates($query);
-
-        // Lọc theo bán kính dựa trên lat/lng (chuẩn hơn "LIKE location")
-        if ($radiusKm !== null && $radiusKm > 0 && $lat !== null && $lng !== null) {
-            $distanceExpr = "(6371 * acos( cos(radians(?)) * cos(radians(bai_dang.lat)) * cos(radians(bai_dang.lng) - radians(?)) + sin(radians(?)) * sin(radians(bai_dang.lat)) ))";
-            $query->whereNotNull('bai_dang.lat')
-                ->whereNotNull('bai_dang.lng')
-                ->whereRaw("$distanceExpr <= ?", [$lat, $lng, $lat, $radiusKm]);
-
-            // Inject số vì đã cast sang float, dùng cho select khoảng cách để FE lấy hiển thị.
-            $distanceExprSelect = "(6371 * acos( cos(radians(" . $lat . ")) * cos(radians(bai_dang.lat)) * cos(radians(bai_dang.lng) - radians(" . $lng . ")) + sin(radians(" . $lat . ")) * sin(radians(bai_dang.lat)) ))";
-            $query->addSelect(DB::raw($distanceExprSelect . " as distance_km"));
-            $query->orderBy('distance_km', 'asc');
-        }
 
         if (in_array($loaiBai, ['CHO', 'NHAN'], true)) {
             $query->where('loai_bai', $loaiBai);
@@ -72,6 +54,74 @@ class PostController extends Controller
                 $q->where('tieu_de', 'like', '%' . $keyword . '%')
                     ->orWhere('mo_ta', 'like', '%' . $keyword . '%');
             });
+        }
+
+        // FEED flow:
+        // 1) Guest: created_at DESC
+        // 2) Logged-in + no address: prioritize posts matching user interests
+        // 3) Logged-in + has address: sort by distance (near -> far)
+        if (Auth::check()) {
+            $userId = (int) Auth::id();
+            $user = User::query()->find($userId);
+            // $userHasAddress = $user && !empty($user->dia_chi);
+            $userHasAddress = $user && !empty($user->lat) && !empty($user->lng);
+
+            if ($userHasAddress) {
+
+                $userLat = (float) $user->lat;
+                $userLng = (float) $user->lng;
+        
+                $distanceExprSelect = "(6371 * acos(
+                    cos(radians($userLat)) * cos(radians(bai_dang.lat)) *
+                    cos(radians(bai_dang.lng) - radians($userLng)) +
+                    sin(radians($userLat)) * sin(radians(bai_dang.lat))
+                ))";
+        
+                $query->addSelect(DB::raw("
+                    CASE 
+                        WHEN bai_dang.lat IS NULL OR bai_dang.lng IS NULL THEN NULL
+                        ELSE $distanceExprSelect
+                    END as distance_km
+                "))
+                ->reorder()
+                ->orderByRaw('CASE WHEN distance_km IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('distance_km', 'asc')
+                ->orderByDesc('created_at');
+        
+            } else {
+                $interests = $this->calculateUserInterests($userId);
+                $interestWeights = collect($interests)
+                    ->filter(fn($row) => is_array($row) && isset($row['code'], $row['weight']))
+                    ->mapWithKeys(function ($row) {
+                        return [(string) $row['code'] => (float) $row['weight']];
+                    })
+                    ->toArray();
+
+                if (!empty($interestWeights)) {
+                    $caseWhenParts = [];
+                    $bindings = [];
+                    foreach ($interestWeights as $code => $weight) {
+                        $caseWhenParts[] = 'WHEN danh_muc_code = ? THEN ?';
+                        $bindings[] = $code;
+                        $bindings[] = $weight;
+                    }
+                    $weightedCaseSql = implode(' ', $caseWhenParts);
+                    $interestSql = "
+                        SELECT bai_dang_id,
+                               SUM(CASE {$weightedCaseSql} ELSE 0 END) AS interest_score
+                        FROM danh_muc_bai_dang
+                        GROUP BY bai_dang_id
+                    ";
+                    $query->leftJoin(DB::raw("({$interestSql}) as user_interest_rank"), function ($join) {
+                        $join->on('user_interest_rank.bai_dang_id', '=', 'bai_dang.id');
+                    })
+                        ->addBinding($bindings, 'join')
+                        ->addSelect(DB::raw('COALESCE(user_interest_rank.interest_score, 0) as interest_score'))
+                        ->reorder()
+                        ->orderByDesc('interest_score')
+                        ->orderByDesc('created_at');
+                }
+            }
         }
 
         $posts = $query->paginate(12);
@@ -311,6 +361,10 @@ class PostController extends Controller
             'message' => 'Tạo bài đăng thành công',
             'data' => $post,
             'danh_muc_goi_y' => $danhMucGoiY,
+            'next_step' => [
+                'matches_endpoint' => '/api/posts/' . $post->id . '/matches',
+                'method' => 'GET',
+            ],
         ], 201);
     }
 
@@ -486,14 +540,14 @@ class PostController extends Controller
     public function matches(int $id, AiMatchingService $aiMatchingService)
     {
         $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
-        
+
         // Get authenticated user - required by middleware
         $userId = (int) Auth::id();
         $user = User::findOrFail($userId);
-        
+
         // Check if user has address for location-based matching
         $userHasAddress = !empty($user->dia_chi);
-        
+
         // Get user interests from liked posts (for interest-based matching when no address)
         $userInterests = [];
         if (!$userHasAddress) {
