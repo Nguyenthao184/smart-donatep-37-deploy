@@ -29,7 +29,7 @@ class GoogleController extends Controller
 
         // nếu bị cấm
         if ($user && $user->trang_thai == 'BI_CAM') {
-            return redirect("http://localhost:5173/login?error=blocked");
+            return redirect("https://smartdonate-phi.vercel.app/login?error=blocked");
         }
 
         // nếu chưa có user → tạo mới
@@ -69,6 +69,6 @@ class GoogleController extends Controller
 
         $roles = $user->roles->pluck('ten_vai_tro')->implode(',');
 
-        return redirect("http://localhost:5173/bang-tin?token={$token}&roles={$roles}");
+        return redirect("https://smartdonate-phi.vercel.app/bang-tin?token={$token}&roles={$roles}");
     }
 }
