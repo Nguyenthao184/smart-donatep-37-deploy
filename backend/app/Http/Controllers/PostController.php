@@ -486,6 +486,19 @@ class PostController extends Controller
     public function matches(int $id, AiMatchingService $aiMatchingService)
     {
         $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
+        
+        // Get authenticated user - required by middleware
+        $userId = (int) Auth::id();
+        $user = User::findOrFail($userId);
+        
+        // Check if user has address for location-based matching
+        $userHasAddress = !empty($user->dia_chi);
+        
+        // Get user interests from liked posts (for interest-based matching when no address)
+        $userInterests = [];
+        if (!$userHasAddress) {
+            $userInterests = $this->calculateUserInterests($userId);
+        }
 
         $targetLoaiBai = $source->loai_bai === 'CHO' ? 'NHAN' : 'CHO';
         $maxRadiusKm = 20.0;
@@ -547,6 +560,8 @@ class PostController extends Controller
         $payload = [
             'post_id' => $source->id,
             'posts' => $postsPayload,
+            'user_has_address' => $userHasAddress,
+            'user_interests' => $userInterests,
         ];
 
         if (count($postsPayload) < 2) {
@@ -668,6 +683,42 @@ class PostController extends Controller
         }
 
         return $map;
+    }
+
+    private function calculateUserInterests(int $userId): array
+    {
+        /**
+         * Get all categories from posts that user has liked,
+         * sorted by frequency. Used for interest-based matching
+         * when user has not entered their address.
+         */
+        $interests = DanhMucBaiDang::query()
+            ->whereIn('bai_dang_id', function ($q) use ($userId) {
+                $q->select('bai_dang_id')
+                    ->from('thich_bai_dang')
+                    ->where('nguoi_dung_id', $userId);
+            })
+            ->selectRaw(
+                'danh_muc_code, 
+                 COUNT(*) as like_count,
+                 AVG(confidence) as avg_confidence,
+                 SUM(CASE WHEN is_primary THEN 1 ELSE 0 END) as primary_count'
+            )
+            ->groupBy('danh_muc_code')
+            ->orderByDesc('like_count')
+            ->orderByDesc('primary_count')
+            ->limit(10)  // Get top 10 interest categories
+            ->get();
+
+        $result = [];
+        foreach ($interests as $interest) {
+            $result[] = [
+                'code' => $interest->danh_muc_code,
+                'weight' => (float)$interest->like_count,
+            ];
+        }
+
+        return $result;
     }
 
     private function normalizeStoragePath(?string $value): ?string

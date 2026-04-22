@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Dict, List, Literal, Optional, Set, Tuple
+from typing import Dict, List, Literal, Optional, Set, Tuple, Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -34,6 +34,10 @@ class MatchRequest(BaseModel):
     post_id: int
     # Cho phép 1 bài: khi không có ứng viên đối ứng trong DB, backend vẫn gọi được; endpoint trả [].
     posts: List[AiPost] = Field(min_length=1)
+    # True if user has entered their address; used for location-based matching
+    user_has_address: bool = True
+    # User interest categories (from liked posts). Used when user_has_address=False
+    user_interests: Optional[List[Dict[str, Any]]] = None
 
 
 class MatchResponseItem(BaseModel):
@@ -195,6 +199,30 @@ def matches(req: MatchRequest) -> List[MatchResponseItem]:
 
         similarity_score = match_sim * 7.0
 
+        # Interest-based boost when user has no address
+        # If user interests are provided and user has no address, boost score for matching interest categories
+        interest_score = 0.0
+        if not req.user_has_address and req.user_interests:
+            cand_categories = set()
+            if cand.danh_muc:
+                cand_categories.add(cand.danh_muc)
+            if cand.danh_mucs:
+                cand_categories.update(cand.danh_mucs)
+            
+            # Calculate interest boost based on category matches
+            user_interest_codes = {interest['code'] for interest in req.user_interests}
+            matching_interests = cand_categories & user_interest_codes
+            
+            if matching_interests:
+                # Find the max weight among matching interests
+                max_weight = max(
+                    (interest['weight'] for interest in req.user_interests if interest['code'] in matching_interests),
+                    default=0
+                )
+                # Normalize weight to 0-3 point boost
+                interest_score = min(3.0, max_weight / 5.0)
+                reasons.append("interest_match")
+        
         distance_km: Optional[float] = None
         location_score = 0.0
         has_geo = not (
@@ -229,10 +257,11 @@ def matches(req: MatchRequest) -> List[MatchResponseItem]:
             delta_days = 0.0
         time_score = core_geo.score_time_days(delta_days)
 
-        final_score = similarity_score + location_score + time_score + (target_urgency * 1.5)
+        final_score = similarity_score + location_score + interest_score + time_score + (target_urgency * 1.5)
         penalty = core_text.relevance_penalty(match_sim)
         final_score += penalty
-        if not has_geo:
+        # Only penalize missing geo if user has address (is doing location-based matching)
+        if not has_geo and req.user_has_address:
             final_score -= 1.25
 
         match_percent = min(100.0, (match_sim * 100.0))
@@ -248,6 +277,7 @@ def matches(req: MatchRequest) -> List[MatchResponseItem]:
                 "match_sim": float(round(match_sim, 6)),
                 "similarity_score": float(round(similarity_score, 6)),
                 "location_score": float(round(location_score, 6)),
+                "interest_score": float(round(interest_score, 6)),
                 "time_score": float(round(time_score, 6)),
                 "urgency": float(round(target_urgency, 6)),
                 "penalty": float(round(penalty, 6)),
