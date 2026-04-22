@@ -104,7 +104,7 @@ class AuthController extends Controller
         $data = Cache::get('register_token_' . $token);
 
         if (!$data) {
-            return redirect("http://localhost:5173/dang-nhap?verified=invalid");
+            return redirect("https://smartdonate-phi.vercel.app/dang-nhap?verified=invalid");
         }
 
         // tạo username
@@ -130,7 +130,7 @@ class AuthController extends Controller
 
         Cache::forget('register_token_' . $token);
 
-        return redirect("http://localhost:5173/dang-nhap?verified=success");
+        return redirect("https://smartdonate-phi.vercel.app/dang-nhap?verified=success");
     }
 
     // đăng nhập
