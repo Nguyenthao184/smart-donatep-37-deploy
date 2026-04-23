@@ -179,22 +179,16 @@ class DonateController extends Controller
                 ];
 
                 ksort($inputData);
-                $hashData = '';
-                $query = '';
-                $i = 0;
+                $hashDataArr = [];
+                $queryArr = [];
 
                 foreach ($inputData as $key => $value) {
-                    if ($i == 1) {
-                        $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
-                    } else {
-                        $hashData .= urlencode($key) . "=" . urlencode($value);
-                        $i = 1;
-                    }
-
-                    $query .= urlencode($key) . "=" . urlencode($value) . '&';
+                    $hashDataArr[] = $key . '=' . $value;
+                    $queryArr[] = urlencode($key) . '=' . urlencode($value);
                 }
 
-                $query = rtrim($query, '&');
+                $hashData = implode('&', $hashDataArr);
+                $query = implode('&', $queryArr);
 
                 $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
