@@ -75,8 +75,8 @@ class DonateController extends Controller
                 $amount = $request->so_tien;
 
                 $orderInfo = "Ung ho chien dich " . $campaign->id;
-                $redirectUrl = "http://localhost:5173/thanh-cong";
-                $ipnUrl = "https://dipyramidal-silkier-bell.ngrok-free.dev/api/momo/ipn";
+                $redirectUrl = "https://smartdonate-phi.vercel.app/thanh-cong";
+                $ipnUrl = "https://zucchini-rejoicing-production-404a.up.railway.app/api/momo/ipn";
                 $extraData = "";
 
                 $requestType = "payWithATM";
