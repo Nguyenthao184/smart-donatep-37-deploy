@@ -343,7 +343,7 @@ class DonateController extends Controller
         $hashData = '';
 
         foreach ($inputData as $key => $value) {
-            $hashData .= $key . '=' . $value . '&';
+            $hashData .= $key . '=' . urlencode($value) . '&';
         }
 
         $hashData = rtrim($hashData, '&');
