@@ -21,11 +21,18 @@ class User extends Authenticatable
         'mat_khau',
         'anh_dai_dien',
         'dia_chi',
+        'lat',
+        'lng',
         'trang_thai'
     ];
 
     protected $hidden = [
         'mat_khau'
+    ];
+
+    protected $casts = [
+        'lat' => 'float',
+        'lng' => 'float',
     ];
 
     public function getAuthPassword()

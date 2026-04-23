@@ -19,10 +19,19 @@ class BaiDangSeeder extends Seeder
         DB::table('bai_dang')->truncate();
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-        // $geo = app(GeocodingService::class);
-        $nguoiDungIds = [2, 3, 4, 5, 6];
+        $nguoiDungIds = DB::table('nguoi_dung')
+            ->where('trang_thai', 'HOAT_DONG')
+            ->where('ten_tai_khoan', '!=', 'admin')
+            ->pluck('id')
+            ->toArray();
 
-        // 📍 Tâm điểm địa lý (region sẽ = makeRegion(lat,lng) giống PostController khi tạo bài thật)
+        $activeUsers = array_slice($nguoiDungIds, 0, 5);
+        $inactiveUsers = array_slice($nguoiDungIds, -5);
+
+        $normalUsers = array_diff($nguoiDungIds, $inactiveUsers);
+
+       
+
         $locations = [
             ['dia_diem' => 'Hải Châu', 'lat' => 16.0471, 'lng' => 108.2068],
             ['dia_diem' => 'Hải Châu - Nguyễn Văn Linh', 'lat' => 16.0545, 'lng' => 108.2022],
@@ -78,7 +87,7 @@ class BaiDangSeeder extends Seeder
                     'posts/quan_ao_mua_dong_2.jpg',
                     'posts/quan_ao_mua_dong_3_cho.jpg',
                     'posts/quan_ao_mua_dong_2.png',
-                    
+
                 ],
                 'Quần áo mùa hè' => [
                     'posts/quan_ao_mua_he_1_cho.jpg',
@@ -117,7 +126,7 @@ class BaiDangSeeder extends Seeder
                 'Nồi cơm' => ['posts/noi_com_cho.jpg'],
 
                 'Xe máy' => ['posts/xe_may_1_cho.jpg', 'posts/xe_may_2_cho.jpg'],
-                'Xe đạp' => ['posts/xe_dap_1_cho.png', 'posts/xe_dap_2_cho.png','posts/xe_dap_3_cho.jpg'],
+                'Xe đạp' => ['posts/xe_dap_1_cho.png', 'posts/xe_dap_2_cho.png', 'posts/xe_dap_3_cho.jpg'],
             ],
             'NHAN' => [
                 'Quần áo' => [
@@ -173,17 +182,30 @@ class BaiDangSeeder extends Seeder
         ];
 
         for ($i = 1; $i <= $count; $i++) {
+            
+            $rand = rand(1, 100);
+            if ($rand <= 30) {
+                $nguoiDungId = Arr::random($activeUsers);
+            } elseif ($rand <= 90) {
+                $nguoiDungId = Arr::random($normalUsers);
+            } else {
+                $nguoiDungId = Arr::random($inactiveUsers);
+            }
 
             $loaiBai = ($i % 2 === 0) ? 'CHO' : 'NHAN';
-            $trangThai = $loaiBai === 'CHO' ? 'CON_TANG' : 'CON_NHAN';
-
-            $nguoiDungId = Arr::random($nguoiDungIds);
+            if ($loaiBai === 'CHO') {
+                $trangThai = rand(1, 100) <= 30 ? 'DA_TANG' : 'CON_TANG';
+            } else {
+                $trangThai = rand(1, 100) <= 30 ? 'DA_NHAN' : 'CON_NHAN';
+            }
+            if ($trangThai === 'DA_TANG' || $trangThai === 'DA_NHAN') {
+                $createdAt = $now->copy()->subDays(rand(5, 15));
+            } else {
+                $createdAt = $now->copy()->subDays(rand(0, 5));
+            }
             $location = Arr::random($locations);
 
             $randomLatLng = randomizeLatLng($location['lat'], $location['lng']);
-
-            $daysAgo = ($i % 11);
-            $createdAt = $now->copy()->subDays($daysAgo)->subHours($i);
 
             $chuDes = [
                 'Quần áo',
@@ -206,48 +228,76 @@ class BaiDangSeeder extends Seeder
             $tenChuDe = Arr::random($chuDes);
             $diaDiem = $location['dia_diem'];
 
+            $tieuDeSamples = [
+                "Cho {$tenChuDe} còn dùng tốt",
+                "Mình tặng {$tenChuDe} cho ai cần",
+                "Có {$tenChuDe} không dùng tới",
+                "Ai cần {$tenChuDe} thì liên hệ mình",
+                "Còn dư {$tenChuDe}, muốn cho lại",
+            ];
 
-            $prefix = $loaiBai === 'CHO' ? 'CHO' : 'NHAN';
-            $tieuDe = "{$prefix} - {$tenChuDe} - {$diaDiem} #{$i}";
+            $tieuDeNhanSamples = [
+                "Mình cần {$tenChuDe}",
+                "Ai có {$tenChuDe} cho mình xin",
+                "Đang cần {$tenChuDe} gấp",
+                "Xin {$tenChuDe} để dùng",
+                "Bạn nào có {$tenChuDe} không dùng không ạ?",
+            ];
+
+            $tieuDe = $loaiBai === 'CHO'
+                ? Arr::random($tieuDeSamples)
+                : Arr::random($tieuDeNhanSamples);
             if ($loaiBai === 'NHAN') {
                 $sentences = [
-                    "Mình đang cần {$tenChuDe} tại khu vực {$diaDiem}.",
-                    "Đây là nhu cầu chính hiện tại, không cần các loại khác.",
-                    "Mình có thể chủ động đến gần khu vực {$diaDiem} để nhận cho tiện.",
-                    "Xin cảm ơn bạn rất nhiều vì đã lan tỏa sự sẻ chia.",
+                    "Mình đang cần {$tenChuDe}, ai có dư cho mình xin với ạ.",
+                    "Hiện tại mình thiếu {$tenChuDe}, mong được hỗ trợ.",
+                    "Bạn nào có {$tenChuDe} không dùng tới thì cho mình xin nhé.",
+                    "Mình cần {$tenChuDe}, có thể tự qua lấy.",
+                    "Đang hơi gấp nên cần {$tenChuDe}, cảm ơn mọi người nhiều.",
                 ];
                 shuffle($sentences);
                 $take = rand(3, 6);
                 $moTa = implode(' ', array_slice($sentences, 0, $take));
             } else {
                 $sentences = [
-                    "Mình muốn tặng {$tenChuDe} tại {$diaDiem}. ",
-                    "Còn sử dụng tốt và phù hợp cho bạn nào đang cần nha.",
-                    "Đây là {$tenChuDe} thuộc nhóm hỗ trợ chính, không bao gồm các loại khác.",
-                    "Mình có thể hẹn tại {$diaDiem} hoặc linh động thời gian trao tặng. ",
-                    "Ưu tiên người thực sự cần. Nếu bạn quan tâm, hãy liên hệ mình nhé.",
+                    "Mình có {$tenChuDe} không dùng nữa nên muốn cho lại.",
+                    "Còn {$tenChuDe} khá ổn, bạn nào cần thì mình tặng.",
+                    "Dọn nhà nên dư {$tenChuDe}, ai cần lấy giúp mình.",
+                    "Mình muốn cho lại {$tenChuDe}, ưu tiên người cần.",
+                    "Có {$tenChuDe}, còn dùng tốt, tặng lại cho bạn nào cần.",
+                ];
+                $extra = [
+                    "Mình ở {$diaDiem}.",
+                    "Có thể hẹn giờ linh hoạt.",
+                    "Ai cần thật sự thì liên hệ mình nhé.",
+                    "Ưu tiên bạn nào gần khu vực.",
+                    "Cảm ơn mọi người.",
                 ];
                 shuffle($sentences);
-                $take = rand(5, 7);
-                $moTa = implode(' ', array_slice($sentences, 0, $take));
+                shuffle($extra);
+
+                $moTa = implode(' ', array_merge(
+                    array_slice($sentences, 0, rand(1, 3)),
+                    array_slice($extra, 0, rand(1, 2))
+                ));;
             }
 
             $hinhAnhArr = null;
             if (rand(1, 100) <= 70) {
 
-            $imgs = $imageMap[$tenChuDe] ?? null;
+                $imgs = $imageMap[$tenChuDe] ?? null;
 
-            if (is_array($imgs) && $imgs !== []) {
-                shuffle($imgs);
+                if (is_array($imgs) && $imgs !== []) {
+                    shuffle($imgs);
 
-                if ($loaiBai === 'CHO') {
-                    $takeImg = min(count($imgs), rand(1, 3));
-                } else {
-                    $takeImg = min(count($imgs), rand(1, 2));
+                    if ($loaiBai === 'CHO') {
+                        $takeImg = min(count($imgs), rand(1, 3));
+                    } else {
+                        $takeImg = min(count($imgs), rand(1, 2));
+                    }
+
+                    $hinhAnhArr = array_slice($imgs, 0, $takeImg);
                 }
-
-                $hinhAnhArr = array_slice($imgs, 0, $takeImg);
-            }
             }
 
             $rows[] = [
@@ -257,11 +307,10 @@ class BaiDangSeeder extends Seeder
                 'mo_ta' => $moTa,
                 'hinh_anh' => is_array($hinhAnhArr) ? json_encode($hinhAnhArr, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
                 'dia_diem' => $diaDiem,
-                // 'region' => $geo->makeRegion((float) $randomLatLng['lat'], (float) $randomLatLng['lng']),
                 'region' => fakeRegion($randomLatLng['lat'], $randomLatLng['lng']),
                 'so_luong' => 5 + ($i % 10),
                 'trang_thai' => $trangThai,
-                'lat' => $randomLatLng['lat'], // ✅ random
+                'lat' => $randomLatLng['lat'],
                 'lng' => $randomLatLng['lng'],
                 'created_at' => $createdAt,
                 'updated_at' => $createdAt,
@@ -269,15 +318,10 @@ class BaiDangSeeder extends Seeder
         }
         $commentSamples = [
             "Mình rất cần cái này, bạn còn không ạ?",
-            "Cảm ơn bạn rất nhiều vì chia sẻ ❤️",
-            "Mình có thể qua lấy hôm nay không?",
-            "Bạn cho mình xin địa chỉ với nhé",
-            "Bài viết rất ý nghĩa 🙌",
-            "Mình xin đăng ký nhận nhé!",
-            "Chúc bạn nhiều sức khỏe ❤️",
-            "Bạn còn không ạ, mình cần gấp",
-            "Bạn còn {$tenChuDe} không ạ?",
-            "Mình ở {$diaDiem}, có thể qua lấy không?",
+            "Mình xin được không ạ?",
+            "Bạn ở khu vực nào vậy?",
+            "Mình quan tâm bài này",
+            "Có thể lấy hôm nay không?",
         ];
 
         $likes = [];
@@ -289,8 +333,27 @@ class BaiDangSeeder extends Seeder
         $postIds = DB::table('bai_dang')->pluck('id');
 
         foreach ($postIds as $postId) {
+            $postOwner = DB::table('bai_dang')
+                ->where('id', $postId)
+                ->value('nguoi_dung_id');
 
-            // ❤️ LIKE
+            $commentUsers = collect($nguoiDungIds)
+                ->reject(fn($id) => $id == $postOwner)
+                ->shuffle()
+                ->take(rand(2, 5));
+            $baseTime = now()->subHours(rand(1, 24));
+            foreach ($commentUsers as $uid) {
+
+                $time = $baseTime->copy()->addMinutes(rand(2, 15));
+
+                $comments[] = [
+                    'bai_dang_id' => $postId,
+                    'nguoi_dung_id' => $uid,
+                    'noi_dung' => Arr::random($commentSamples),
+                    'created_at' => $time,
+                    'updated_at' => $time,
+                ];
+            }
             $likeUsers = collect($nguoiDungIds)->shuffle()->take(rand(2, 5));
 
             foreach ($likeUsers as $uid) {
@@ -300,26 +363,8 @@ class BaiDangSeeder extends Seeder
                     'created_at' => now()->subMinutes(rand(1, 1000)),
                 ];
             }
-
-            // 💬 COMMENT
-            $commentCount = rand(2, 5);
-            $baseTime = now()->subHours(rand(1, 24));
-
-            for ($j = 0; $j < $commentCount; $j++) {
-
-                $time = $baseTime->copy()->addMinutes($j * rand(2, 15));
-
-                $comments[] = [
-                    'bai_dang_id' => $postId,
-                    'nguoi_dung_id' => Arr::random($nguoiDungIds),
-                    'noi_dung' => Arr::random($commentSamples),
-                    'created_at' => $time,
-                    'updated_at' => $time,
-                ];
-            }
         }
 
-        // 🚀 Insert like + comment (chia nhỏ tránh lag)
         collect($likes)->chunk(500)->each(function ($chunk) {
             DB::table('thich_bai_dang')->insert($chunk->toArray());
         });

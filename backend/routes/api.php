@@ -128,16 +128,20 @@ Route::middleware('auth:sanctum')->group(function(){
         Route::get('/dashboard/monthly-statistics', [DashboardController::class, 'monthlyStatistics']);
         Route::get('/dashboard/active-campaigns', [DashboardController::class, 'activeCampaigns']);
         Route::get('/dashboard/recent-activities', [DashboardController::class, 'recentActivities']);
+        //Thống kê bài đăng
+      
    });
 
     // Feed - user và tổ chức: đăng/cập nhật/xóa 
     Route::middleware('role:NGUOI_DUNG,TO_CHUC')->group(function () {
         // CRUD posts
+        Route::get('/dashboard/community-stats', [DashboardController::class, 'communityStats']);
         Route::post('/posts', [PostController::class, 'store']);
         Route::get('/posts/me', [PostController::class, 'me']);
+        Route::get('/posts/{id}/related', [PostController::class, 'related']);
         Route::post('/posts/{id}', [PostController::class, 'update'])->whereNumber('id');
         Route::delete('/posts/{id}', [PostController::class, 'destroy'])->whereNumber('id');
-
+        Route::get('/posts/search', [PostController::class, 'search']);
         // AI matching
         Route::get('/posts/{id}/matches', [PostController::class, 'matches'])->whereNumber('id');
        
