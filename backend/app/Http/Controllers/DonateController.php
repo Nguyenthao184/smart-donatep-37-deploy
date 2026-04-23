@@ -285,44 +285,6 @@ class DonateController extends Controller
         return $str;
     }
 
-    // private function vnpVerifySignature(array $params): bool
-    // {
-    //     $secureHash = $params['vnp_SecureHash'] ?? null;
-
-    //     if (!$secureHash) {
-    //         return false;
-    //     }
-
-    //     // bỏ hash ra trước khi tạo chữ ký
-    //     unset($params['vnp_SecureHash'], $params['vnp_SecureHashType']);
-
-    //     // sort giống VNPAY
-    //     ksort($params);
-
-    //     // build chuỗi hash giống mẫu VNPAY
-    //     $hashData = '';
-    //     $i = 0;
-
-    //     foreach ($params as $key => $value) {
-    //         if ($i == 1) {
-    //             $hashData .= '&' . $key . '=' . $value;
-    //         } else {
-    //             $hashData .= $key . "=" . $value;
-    //             $i = 1;
-    //         }
-    //     }
-
-    //     // tạo chữ ký
-    //     $calcHash = hash_hmac(
-    //         'sha512',
-    //         $hashData,
-    //         config('services.vnpay.hash_secret')
-    //     );
-
-    //     // so sánh an toàn
-    //     return hash_equals($calcHash, $secureHash);
-    // }
-
     public function vnpayReturn(Request $request)
     {
         \Log::info('=== HIT VNPAY RETURN ===', $request->query());
@@ -446,7 +408,7 @@ class DonateController extends Controller
                 DB::commit();
 
                 return redirect()->away(
-                    env('FRONTEND_URL') . '/thanh-cong?status=success&orderId=' . $request->vnp_TxnRef
+                    env('FRONTEND_URL') . '/thanh-cong?' . http_build_query($request->all())
                 );
             }
 

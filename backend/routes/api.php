@@ -114,7 +114,6 @@ Route::middleware('auth:sanctum')->group(function(){
         Route::post('/donate', [DonateController::class, 'donate']);
         Route::get('/donate/{id}', [DonateController::class, 'getDonateDetail']);
         Route::get('/donate/history', [DonateController::class, 'donateHistory']);
-        Route::post('/momo/success', [DonateController::class, 'momoSuccess']);
     });
     
     Route::middleware(['role:TO_CHUC','update.campaign'])->group(function(){
