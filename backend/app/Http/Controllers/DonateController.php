@@ -302,7 +302,7 @@ class DonateController extends Controller
             if ($i == 1) {
                 $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
             } else {
-                $hashData .= urlencode($key) . '=' . urlencode($value);
+                $hashData .= $key . "=" . $value;
                 $i = 1;
             }
         }
