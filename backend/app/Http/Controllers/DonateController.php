@@ -572,6 +572,7 @@ class DonateController extends Controller
                 'uh.created_at',
                 'uh.phuong_thuc_thanh_toan',
                 'uh.gateway_transaction_id',
+                'cd.id as chien_dich_id',
                 'cd.ten_chien_dich',
                 'nd.ho_ten',
                 'tc.ten_to_chuc'
