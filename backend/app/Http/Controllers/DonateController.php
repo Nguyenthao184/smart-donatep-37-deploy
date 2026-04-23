@@ -444,7 +444,7 @@ class DonateController extends Controller
                 DB::commit();
 
                 return redirect()->away(
-                    "http://localhost:5173/thanh-cong?" . http_build_query([
+                    "https://smartdonate-phi.vercel.app/thanh-cong?" . http_build_query([
                         'status' => 'success',
                         'orderId' => $request->vnp_TxnRef
                     ])
