@@ -154,7 +154,7 @@ class DonateController extends Controller
                         'payment_ref' => $vnp_TxnRef
                     ]);
 
-                $vnp_Amount = $request->so_tien * 100;
+                $vnp_Amount = (int) round((float) $request->so_tien * 100);
                 $vnp_IpAddr = $request->header('X-Forwarded-For');
                 if ($vnp_IpAddr) {
                     $vnp_IpAddr = explode(',', $vnp_IpAddr)[0];
