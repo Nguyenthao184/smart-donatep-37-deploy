@@ -183,7 +183,7 @@ class DonateController extends Controller
                 $query = '';
 
                 foreach ($inputData as $key => $value) {
-                    $hashData .= $key . '=' . $value . '&';
+                    $hashData .= urlencode($key) . '=' . urlencode($value) . '&';
                     $query .= urlencode($key) . '=' . urlencode($value) . '&';
                 }
 
