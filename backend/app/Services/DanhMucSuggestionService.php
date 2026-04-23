@@ -46,11 +46,19 @@ class DanhMucSuggestionService
             }
         };
 
-        // Education
-        $eduKw = ['hoc tap', 'sach', 'sach giao khoa', 'vo', 'but', 'hoc phi', 'laptop', 'may tinh', 'giao khoa'];
+        // Education (ASCII normalized)
+        $eduKw = ['hoc tap', 'sach', 'sach giao khoa', 'sach but', 'sach vo', 'vo sach', 'but sach', 'vo', 'but', 'hoc phi', 'laptop', 'may tinh', 'giao khoa', 'dung hoc tap', 'do hoc tap'];
         foreach ($eduKw as $kw) {
             if (str_contains($text, $kw)) {
                 $add('education', 0.85);
+                break;
+            }
+        }
+        // Education (Unicode — tránh mất "sách" khi iconv/preg làm sai chuỗi)
+        $eduVi = ['sách bút', 'sách vở', 'vở sách', 'bút sách', 'sách', 'sách giáo khoa', 'vở', 'bút', 'học tập', 'học phí', 'laptop', 'máy tính', 'đồ dùng học tập', 'cần sách', 'xin sách', 'tặng sách', 'đồ học tập', 'dụng cụ học tập'];
+        foreach ($eduVi as $w) {
+            if (mb_strpos($rawLower, mb_strtolower($w, 'UTF-8')) !== false) {
+                $add('education', 0.88);
                 break;
             }
         }

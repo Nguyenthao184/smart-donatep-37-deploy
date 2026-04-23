@@ -8,6 +8,7 @@ use App\Http\Requests\User\UpdateDiaChiRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use App\Services\GeocodingService;
 use App\Models\ToChuc;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
@@ -62,7 +63,19 @@ class UserProfileController extends Controller
         ]);
 
         if ($request->has('dia_chi_user')) {
-            $userData['dia_chi'] = $request->dia_chi_user;
+
+            $diaChi = $request->dia_chi_user;
+        
+            $geo = app(GeocodingService::class);
+            $coords = $geo->geocode($diaChi);
+        
+            $userData['dia_chi'] = $diaChi;
+        
+            if ($coords) {
+                $userData['lat'] = $coords['lat'];
+                $userData['lng'] = $coords['lng'];
+                $userData['region'] = $geo->makeRegion($coords['lat'], $coords['lng']);
+            }
         }
 
         if ($request->hasFile('anh_dai_dien')) {
@@ -226,19 +239,38 @@ class UserProfileController extends Controller
     }
 
     // Cập nhật địa chỉ
-    public function updateDiaChi(UpdateDiaChiRequest $request)
-    {
-        $user = auth()->user();
 
-        $user->update([
-            'dia_chi' => $request->dia_chi
-        ]);
+public function updateDiaChi(UpdateDiaChiRequest $request)
+{
+    $user = auth()->user();
 
-        return response()->json([
-            'message' => 'Cập nhật địa chỉ thành công',
-            'data' => $user
-        ]);
+    $diaChi = $request->dia_chi;
+
+    $geo = app(GeocodingService::class);
+    $coords = $geo->geocode($diaChi);
+
+    $lat = null;
+    $lng = null;
+    $region = null;
+
+    if ($coords) {
+        $lat = $coords['lat'];
+        $lng = $coords['lng'];
+        $region = $geo->makeRegion($lat, $lng);
     }
+
+    $user->update([
+        'dia_chi' => $diaChi,
+        'lat' => $lat,
+        'lng' => $lng,
+        'region' => $region,
+    ]);
+
+    return response()->json([
+        'message' => 'Cập nhật địa chỉ thành công',
+        'data' => $user
+    ]);
+}
 
     private function resolveMediaUrl(?string $value): ?string
     {

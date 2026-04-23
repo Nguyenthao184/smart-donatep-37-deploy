@@ -21,6 +21,8 @@ return new class extends Migration
             $table->string('mat_khau')->nullable();
             $table->string('anh_dai_dien')->nullable();
             $table->string('dia_chi')->nullable();
+            $table->decimal('lat', 10, 7)->nullable();
+            $table->decimal('lng', 10, 7)->nullable();
             $table->enum('trang_thai',['HOAT_DONG','BI_CAM'])->default('HOAT_DONG');
             $table->timestamps();
         });

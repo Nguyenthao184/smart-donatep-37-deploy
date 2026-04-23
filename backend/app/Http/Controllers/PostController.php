@@ -17,129 +17,50 @@ use App\Models\ThichBaiDang;
 use App\Models\User;
 use App\Notifications\BaiDangDuocThichNotification;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class PostController extends Controller
 {
 
-    public function index(Request $request)
+    public function index()
     {
-        $loaiBai = $request->query('loai_bai'); // CHO | NHAN
-        if (is_string($loaiBai)) {
-            $loaiBai = strtoupper(trim($loaiBai));
-        }
-
-        $location = $request->query('location'); // dia_diem (text)
-        $keyword = $request->query('keyword');
-
-        $query = BaiDang::query()
-
-            ->select('bai_dang.*')
+        $posts = BaiDang::query()
             ->with(['nguoiDung'])
-            ->orderByDesc('created_at');
+            ->orderByDesc('created_at')
+            ->paginate(12);
 
-        $this->applyPostLikeAggregates($query);
+        $currentUserId = Auth::id();
 
-        if (in_array($loaiBai, ['CHO', 'NHAN'], true)) {
-            $query->where('loai_bai', $loaiBai);
-        }
+        $posts->getCollection()->transform(function (BaiDang $post) use ($currentUserId) {
 
-        if (!empty($location)) {
-            $query->where('dia_diem', 'like', '%' . $location . '%');
-        }
-
-        if (!empty($keyword)) {
-            $query->where(function ($q) use ($keyword) {
-                $q->where('tieu_de', 'like', '%' . $keyword . '%')
-                    ->orWhere('mo_ta', 'like', '%' . $keyword . '%');
-            });
-        }
-
-        // FEED flow:
-        // 1) Guest: created_at DESC
-        // 2) Logged-in + no address: prioritize posts matching user interests
-        // 3) Logged-in + has address: sort by distance (near -> far)
-        if (Auth::check()) {
-            $userId = (int) Auth::id();
-            $user = User::query()->find($userId);
-            // $userHasAddress = $user && !empty($user->dia_chi);
-            $userHasAddress = $user && !empty($user->lat) && !empty($user->lng);
-
-            if ($userHasAddress) {
-
-                $userLat = (float) $user->lat;
-                $userLng = (float) $user->lng;
-        
-                $distanceExprSelect = "(6371 * acos(
-                    cos(radians($userLat)) * cos(radians(bai_dang.lat)) *
-                    cos(radians(bai_dang.lng) - radians($userLng)) +
-                    sin(radians($userLat)) * sin(radians(bai_dang.lat))
-                ))";
-        
-                $query->addSelect(DB::raw("
-                    CASE 
-                        WHEN bai_dang.lat IS NULL OR bai_dang.lng IS NULL THEN NULL
-                        ELSE $distanceExprSelect
-                    END as distance_km
-                "))
-                ->reorder()
-                ->orderByRaw('CASE WHEN distance_km IS NULL THEN 1 ELSE 0 END ASC')
-                ->orderBy('distance_km', 'asc')
-                ->orderByDesc('created_at');
-        
-            } else {
-                $interests = $this->calculateUserInterests($userId);
-                $interestWeights = collect($interests)
-                    ->filter(fn($row) => is_array($row) && isset($row['code'], $row['weight']))
-                    ->mapWithKeys(function ($row) {
-                        return [(string) $row['code'] => (float) $row['weight']];
-                    })
-                    ->toArray();
-
-                if (!empty($interestWeights)) {
-                    $caseWhenParts = [];
-                    $bindings = [];
-                    foreach ($interestWeights as $code => $weight) {
-                        $caseWhenParts[] = 'WHEN danh_muc_code = ? THEN ?';
-                        $bindings[] = $code;
-                        $bindings[] = $weight;
-                    }
-                    $weightedCaseSql = implode(' ', $caseWhenParts);
-                    $interestSql = "
-                        SELECT bai_dang_id,
-                               SUM(CASE {$weightedCaseSql} ELSE 0 END) AS interest_score
-                        FROM danh_muc_bai_dang
-                        GROUP BY bai_dang_id
-                    ";
-                    $query->leftJoin(DB::raw("({$interestSql}) as user_interest_rank"), function ($join) {
-                        $join->on('user_interest_rank.bai_dang_id', '=', 'bai_dang.id');
-                    })
-                        ->addBinding($bindings, 'join')
-                        ->addSelect(DB::raw('COALESCE(user_interest_rank.interest_score, 0) as interest_score'))
-                        ->reorder()
-                        ->orderByDesc('interest_score')
-                        ->orderByDesc('created_at');
-                }
-            }
-        }
-
-        $posts = $query->paginate(12);
-
-        $posts->getCollection()->transform(function (BaiDang $post) {
             $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
                 ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
                 : null;
 
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
             $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
-            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
+            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
 
             $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
 
-            unset($post->nguoiDung);
+            // 🔥 CHỈ MATCHES CHO BÀI CỦA CHÍNH USER
+            if ($currentUserId && $post->nguoi_dung_id == $currentUserId) {
 
-            $this->decoratePostLikeFields($post);
+                $post->matches = GhepNoiAi::where('bai_dang_nguon_id', $post->id)
+                    ->with(['baiDangPhuHop.nguoiDung'])
+                    ->orderByDesc('diem_phu_hop')
+                    ->limit(5)
+                    ->get()
+                    ->map(function ($m) {
+                        return [
+                            'post' => $m->baiDangPhuHop,
+                            'score' => $m->diem_phu_hop
+                        ];
+                    });
+            } else {
+                $post->matches = null;
+            }
 
             return $post;
         });
@@ -149,6 +70,110 @@ class PostController extends Controller
         ]);
     }
 
+    public function related(int $id)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->lat || !$user->lng) {
+            return response()->json(['data' => []]);
+        }
+
+        $source = BaiDang::findOrFail($id);
+
+        $lat = (float) $user->lat;
+        $lng = (float) $user->lng;
+
+        $distanceExpr = "(6371 * acos(
+            cos(radians({$lat})) * cos(radians(bai_dang.lat)) *
+            cos(radians(bai_dang.lng) - radians({$lng})) +
+            sin(radians({$lat})) * sin(radians(bai_dang.lat))
+        ))";
+
+        $near = BaiDang::query()
+            ->select('bai_dang.*')
+            ->where('loai_bai', $source->loai_bai)
+            ->where('id', '!=', $source->id)
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->whereRaw("$distanceExpr <= 15")
+            ->addSelect(DB::raw("$distanceExpr as distance_km"))
+            ->orderBy('distance_km', 'asc')
+            ->limit(8)
+            ->get();
+
+        if ($near->isEmpty()) {
+            $near = BaiDang::query()
+                ->select('bai_dang.*')
+                ->where('loai_bai', $source->loai_bai)
+                ->where('id', '!=', $source->id)
+                ->whereNotNull('lat')
+                ->whereNotNull('lng')
+                ->whereRaw("$distanceExpr <= 100")
+                ->addSelect(DB::raw("$distanceExpr as distance_km"))
+                ->orderBy('distance_km', 'asc')
+                ->limit(8)
+                ->get();
+        }
+
+        if ($near->isEmpty()) {
+            $near = BaiDang::query()
+                ->select('bai_dang.*')
+                ->where('loai_bai', $source->loai_bai)
+                ->where('id', '!=', $source->id)
+                ->inRandomOrder()
+                ->limit(10)
+                ->get();
+        }
+
+        $posts = $near->values();
+
+
+
+
+
+        if ($posts->isEmpty()) {
+            return response()->json(['data' => []]);
+        }
+
+        $texts = $posts->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'noi_dung' => ($p->tieu_de ?? '') . ' ' . ($p->mo_ta ?? '')
+            ];
+        })->values();
+
+        $sourceText = ($source->tieu_de ?? '') . ' ' . ($source->mo_ta ?? '');
+
+        try {
+            $response = Http::timeout(3)->post(env('AI_SERVICE_URL') . '/semantic-matches', [
+                'noi_dung' => $sourceText,
+                'candidates' => $texts,
+                'top_k' => 10,
+                'min_score' => 0.3
+            ]);
+
+            if ($response->ok()) {
+                $results = $response->json();
+
+                $ids = collect($results)->pluck('id')->toArray();
+
+                $posts = $posts
+                    ->whereIn('id', $ids)
+                    ->sortBy(function ($p) use ($ids) {
+                        return array_search($p->id, $ids);
+                    })
+                    ->values();
+            } else {
+                $posts = $posts->shuffle()->take(10)->values();
+            }
+        } catch (\Exception $e) {
+            $posts = $posts->shuffle()->take(10)->values();
+        }
+
+        return response()->json([
+            'data' => $posts->take(10)
+        ]);
+    }
 
     public function show(int $id)
     {
@@ -330,7 +355,9 @@ class PostController extends Controller
         $data['hinh_anh'] = $hinhAnhPaths === [] ? null : $hinhAnhPaths;
 
         $post = BaiDang::create($data);
+        $aiService = app(\App\Services\AiMatchingService::class);
 
+        
         $gService = app(DanhMucSuggestionService::class);
         $suggestions = $gService->suggest($post->tieu_de, $post->mo_ta);
         DanhMucBaiDang::where('bai_dang_id', $post->id)->delete();
@@ -361,10 +388,6 @@ class PostController extends Controller
             'message' => 'Tạo bài đăng thành công',
             'data' => $post,
             'danh_muc_goi_y' => $danhMucGoiY,
-            'next_step' => [
-                'matches_endpoint' => '/api/posts/' . $post->id . '/matches',
-                'method' => 'GET',
-            ],
         ], 201);
     }
 
@@ -543,6 +566,11 @@ class PostController extends Controller
 
         // Get authenticated user - required by middleware
         $userId = (int) Auth::id();
+        if ((int) $source->nguoi_dung_id !== $userId) {
+            return response()->json([
+                'message' => 'Chỉ chủ bài đăng mới được phép xem matches.'
+            ], 403);
+        }
         $user = User::findOrFail($userId);
 
         // Check if user has address for location-based matching
@@ -741,11 +769,7 @@ class PostController extends Controller
 
     private function calculateUserInterests(int $userId): array
     {
-        /**
-         * Get all categories from posts that user has liked,
-         * sorted by frequency. Used for interest-based matching
-         * when user has not entered their address.
-         */
+
         $interests = DanhMucBaiDang::query()
             ->whereIn('bai_dang_id', function ($q) use ($userId) {
                 $q->select('bai_dang_id')
@@ -761,7 +785,7 @@ class PostController extends Controller
             ->groupBy('danh_muc_code')
             ->orderByDesc('like_count')
             ->orderByDesc('primary_count')
-            ->limit(10)  // Get top 10 interest categories
+            ->limit(10)
             ->get();
 
         $result = [];
@@ -852,8 +876,9 @@ class PostController extends Controller
         $step = 0.01;
         $rows = [];
 
-        foreach ([-$step, 0.0, $step] as $dLat) {
-            foreach ([-$step, 0.0, $step] as $dLng) {
+        // Expand từ 3x3 thành 5x5 grid (±0.02) để không miss bài gần nhưng vượt khỏi boundary
+        foreach ([-2*$step, -$step, 0.0, $step, 2*$step] as $dLat) {
+            foreach ([-2*$step, -$step, 0.0, $step, 2*$step] as $dLng) {
                 if ($dLat == 0.0 && $dLng == 0.0) {
                     continue;
                 }
@@ -892,6 +917,69 @@ class PostController extends Controller
         return response()->json([
             'success' => true,
             'urls' => array_values(array_filter($urls)),
+        ]);
+    }
+    public function search(Request $request)
+    {
+        $keyword = trim((string) $request->query('q', ''));
+        $loaiBai = strtoupper((string) $request->query('loai_bai', ''));
+        $perPage = (int) $request->query('per_page', 10);
+
+        $perPage = max(1, min($perPage, 50));
+
+        $query = BaiDang::query()
+            ->with(['nguoiDung'])
+            ->orderByDesc('created_at');
+
+        if ($keyword !== '') {
+
+            $words = preg_split('/\s+/', $keyword);
+
+            $query->where(function ($q) use ($words) {
+
+                foreach ($words as $word) {
+                    $q->where(function ($sub) use ($word) {
+                        $sub->whereRaw("tieu_de COLLATE utf8mb4_bin LIKE ?", ["%{$word}%"])
+                            ->orWhereRaw("mo_ta COLLATE utf8mb4_bin LIKE ?", ["%{$word}%"]);
+                    });
+                }
+            });
+
+            $query->orderByRaw("
+                    (tieu_de LIKE ?) DESC,
+                    (mo_ta LIKE ?) DESC
+                ", ["%{$keyword}%", "%{$keyword}%"]);
+        }
+
+        $query->orderByDesc('created_at');
+
+        if (in_array($loaiBai, ['CHO', 'NHAN'])) {
+            $query->where('loai_bai', $loaiBai);
+        }
+
+        $query->whereNotIn('trang_thai', ['DA_TANG', 'DA_NHAN']);
+
+        $posts = $query->paginate($perPage);
+
+        $posts->getCollection()->transform(function (BaiDang $post) {
+
+            $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
+                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                : null;
+
+            $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
+            $post->hinh_anh_urls = array_map(fn($p) => $this->resolveMediaUrl($p), $paths);
+            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
+
+            $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
+
+            unset($post->nguoiDung);
+
+            return $post;
+        });
+
+        return response()->json([
+            'data' => $posts
         ]);
     }
 }
