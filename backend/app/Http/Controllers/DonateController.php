@@ -60,7 +60,7 @@ class DonateController extends Controller
 
             DB::commit();
 
-            // ===== CASE 1: BANKING (QR) =====
+            // ===== CASE 1: MOMO =====
             if ($request->phuong_thuc_thanh_toan === 'momo') {
                 $tk = $campaign->taiKhoanGayQuy;
                 $endpoint = "https://test-payment.momo.vn/v2/gateway/api/create";
@@ -146,7 +146,6 @@ class DonateController extends Controller
                 $vnp_Url = config('services.vnpay.url');
                 $vnp_Returnurl = config('services.vnpay.return_url');
 
-                // VNPAY: chữ ký do server tạo từ tham số vnp_* — không lấy từ body API (request chỉ có chien_dich_gay_quy_id, so_tien).
                 $vnp_TxnRef = (string) $ungHoId;
 
                 DB::table('ung_ho')
@@ -180,19 +179,28 @@ class DonateController extends Controller
                 ];
 
                 ksort($inputData);
-                $hashData = "";
-                $query = "";
+                $hashData = '';
+                $query = '';
+                $i = 0;
+
                 foreach ($inputData as $key => $value) {
-                    $hashData .= $key . '=' . $value . '&';
-                    $query .= urlencode($key) . '=' . urlencode($value) . '&';
+                    if ($i == 1) {
+                        $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
+                    } else {
+                        $hashData .= urlencode($key) . "=" . urlencode($value);
+                        $i = 1;
+                    }
+
+                    $query .= urlencode($key) . "=" . urlencode($value) . '&';
                 }
 
-                $hashData = rtrim($hashData, '&');
                 $query = rtrim($query, '&');
 
                 $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+
                 $paymentUrl = $vnp_Url . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
 
+                // DEBUG
                 \Log::info('VNPAY CREATE', [
                     'hashData' => $hashData,
                     'secureHash' => $vnpSecureHash,
@@ -323,6 +331,7 @@ class DonateController extends Controller
 
     public function vnpayReturn(Request $request)
     {
+        \Log::info('=== HIT VNPAY RETURN ===', $request->query());
         $inputData = [];
 
         foreach ($request->query() as $key => $value) {
