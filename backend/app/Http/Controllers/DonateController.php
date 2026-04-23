@@ -603,6 +603,7 @@ class DonateController extends Controller
         $data = DB::table('ung_ho as uh')
             ->join('chien_dich_gay_quy as cd', 'uh.chien_dich_gay_quy_id', '=', 'cd.id')
             ->join('nguoi_dung as nd', 'uh.nguoi_dung_id', '=', 'nd.id')
+            ->join('to_chuc as tc', 'cd.to_chuc_id', '=', 'tc.id')
             ->select(
                 'uh.id',
                 'uh.so_tien',
@@ -611,7 +612,8 @@ class DonateController extends Controller
                 'uh.phuong_thuc_thanh_toan',
                 'uh.gateway_transaction_id',
                 'cd.ten_chien_dich',
-                'nd.ho_ten'
+                'nd.ho_ten',
+                'tc.ten_to_chuc'
             )
             ->where('uh.id', $id)
             ->first();
