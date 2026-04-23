@@ -147,7 +147,7 @@ class DonateController extends Controller
                 $vnp_Returnurl = config('services.vnpay.return_url');
 
                 // VNPAY: chữ ký do server tạo từ tham số vnp_* — không lấy từ body API (request chỉ có chien_dich_gay_quy_id, so_tien).
-                $vnp_TxnRef = $ungHoId;
+                $vnp_TxnRef = (string) $ungHoId;
 
                 DB::table('ung_ho')
                     ->where('id', $ungHoId)
@@ -156,45 +156,48 @@ class DonateController extends Controller
                     ]);
 
                 $vnp_Amount = $request->so_tien * 100;
-                $vnp_IpAddr = request()->ip();
-                $expire = now()->addMinutes(15)->format('YmdHis');
+                $vnp_IpAddr = $request->header('X-Forwarded-For');
+                if ($vnp_IpAddr) {
+                    $vnp_IpAddr = explode(',', $vnp_IpAddr)[0];
+                } else {
+                    $vnp_IpAddr = $request->ip();
+                }
 
                 $inputData = [
                     "vnp_Version" => "2.1.0",
+                    "vnp_Command" => "pay",
                     "vnp_TmnCode" => $vnp_TmnCode,
                     "vnp_Amount" => $vnp_Amount,
-                    "vnp_Command" => "pay",
-                    "vnp_CreateDate" => now()->format('YmdHis'),
                     "vnp_CurrCode" => "VND",
-                    "vnp_IpAddr" => $vnp_IpAddr,
-                    "vnp_Locale" => "vn",
-                    "vnp_OrderInfo" => "Thanh toan GD:" . $vnp_TxnRef, 
-                    "vnp_OrderType" => "other",
-                    "vnp_ReturnUrl" => $vnp_Returnurl,
                     "vnp_TxnRef" => $vnp_TxnRef,
-                    "vnp_ExpireDate" => $expire
+                    "vnp_OrderInfo" => "Thanh toan GD:" . $vnp_TxnRef,
+                    "vnp_OrderType" => "other",
+                    "vnp_Locale" => "vn",
+                    "vnp_ReturnUrl" => $vnp_Returnurl,
+                    "vnp_IpAddr" => $vnp_IpAddr,
+                    "vnp_CreateDate" => now()->format('YmdHis'),
+                    "vnp_ExpireDate" => now()->addMinutes(15)->format('YmdHis'),
                 ];
 
                 ksort($inputData);
-                $hashdata = "";
+                $hashData = "";
                 $query = "";
-                $i = 0;
-
                 foreach ($inputData as $key => $value) {
-                    if ($i == 1) {
-                        $hashdata .= '&' . urlencode($key) . "=" . urlencode($value);
-                    } else {
-                        $hashdata .= urlencode($key) . "=" . urlencode($value);
-                        $i = 1;
-                    }
-                    $query .= urlencode($key) . "=" . urlencode($value) . '&';
+                    $hashData .= $key . '=' . $value . '&';
+                    $query .= urlencode($key) . '=' . urlencode($value) . '&';
                 }
 
-                // tạo secure hash
-                $vnpSecureHash = hash_hmac('sha512', $hashdata, $vnp_HashSecret);
+                $hashData = rtrim($hashData, '&');
+                $query = rtrim($query, '&');
 
-                // URL thanh toán
-                $paymentUrl = $vnp_Url . "?" . $query . 'vnp_SecureHash=' . $vnpSecureHash;
+                $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+                $paymentUrl = $vnp_Url . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
+
+                \Log::info('VNPAY CREATE', [
+                    'hashData' => $hashData,
+                    'secureHash' => $vnpSecureHash,
+                    'url' => $paymentUrl
+                ]);
 
                 return response()->json([
                     'type' => 'VNPAY',
@@ -280,87 +283,83 @@ class DonateController extends Controller
         return $str;
     }
 
-    private function vnpVerifySignature(array $params): bool
+    // private function vnpVerifySignature(array $params): bool
+    // {
+    //     $secureHash = $params['vnp_SecureHash'] ?? null;
+
+    //     if (!$secureHash) {
+    //         return false;
+    //     }
+
+    //     // bỏ hash ra trước khi tạo chữ ký
+    //     unset($params['vnp_SecureHash'], $params['vnp_SecureHashType']);
+
+    //     // sort giống VNPAY
+    //     ksort($params);
+
+    //     // build chuỗi hash giống mẫu VNPAY
+    //     $hashData = '';
+    //     $i = 0;
+
+    //     foreach ($params as $key => $value) {
+    //         if ($i == 1) {
+    //             $hashData .= '&' . $key . '=' . $value;
+    //         } else {
+    //             $hashData .= $key . "=" . $value;
+    //             $i = 1;
+    //         }
+    //     }
+
+    //     // tạo chữ ký
+    //     $calcHash = hash_hmac(
+    //         'sha512',
+    //         $hashData,
+    //         config('services.vnpay.hash_secret')
+    //     );
+
+    //     // so sánh an toàn
+    //     return hash_equals($calcHash, $secureHash);
+    // }
+
+    public function vnpayReturn(Request $request)
     {
-        $secureHash = $params['vnp_SecureHash'] ?? null;
+        $inputData = [];
 
-        if (!$secureHash) {
-            return false;
-        }
-
-        // bỏ hash ra trước khi tạo chữ ký
-        unset($params['vnp_SecureHash'], $params['vnp_SecureHashType']);
-
-        // sort giống VNPAY
-        ksort($params);
-
-        // build chuỗi hash giống mẫu VNPAY
-        $hashData = '';
-        $i = 0;
-
-        foreach ($params as $key => $value) {
-            if ($i == 1) {
-                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
-            } else {
-                $hashData .= $key . "=" . $value;
-                $i = 1;
+        foreach ($request->query() as $key => $value) {
+            if (str_starts_with($key, 'vnp_')) {
+                $inputData[$key] = $value;
             }
         }
+        
+        $vnp_SecureHash = $inputData['vnp_SecureHash'] ?? '';
+        unset($inputData['vnp_SecureHash']);
+        unset($inputData['vnp_SecureHashType']);
 
-        // tạo chữ ký
-        $calcHash = hash_hmac(
+        ksort($inputData);
+
+        $hashData = '';
+
+        foreach ($inputData as $key => $value) {
+            $hashData .= $key . '=' . $value . '&';
+        }
+
+        $hashData = rtrim($hashData, '&');
+
+        $secureHash = hash_hmac(
             'sha512',
             $hashData,
             config('services.vnpay.hash_secret')
         );
 
-        // so sánh an toàn
-        return hash_equals($calcHash, $secureHash);
-    }
+        // DEBUG
+        \Log::info('VNPAY RETURN', [
+            'hashData' => $hashData,
+            'calcHash' => $secureHash,
+            'vnpHash' => $vnp_SecureHash
+        ]);
 
-    public function vnpayReturn(Request $request)
-    {
-        \Log::info('VNPAY RETURN', $request->query());
-        $inputData = array_filter(
-            $request->query(),
-            static fn (string $k): bool => str_starts_with($k, 'vnp_'),
-            ARRAY_FILTER_USE_KEY
-        );
-        
-        $vnp_SecureHash = $inputData['vnp_SecureHash'] ?? '';
-
-        if (empty($vnp_SecureHash)) {
-            if ($request->vnp_ResponseCode == '00') {
-                // ⚠️ sandbox lỗi → vẫn cho pass
-            } else {
-                return response()->json(['message' => 'Thiếu chữ ký'], 400);
-            }
-        } else{
-            unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
-
-            ksort($inputData);
-
-            $hashData = '';
-            $i = 0;
-
-            foreach ($inputData as $key => $value) {
-                if ($i == 1) {
-                    $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
-                } else {
-                    $hashData .= urlencode($key) . "=" . urlencode($value);
-                    $i = 1;
-                }
-            }
-
-            $secureHash = hash_hmac(
-                'sha512',
-                $hashData,
-                config('services.vnpay.hash_secret')
-            );
-
-            if (!hash_equals($secureHash, $vnp_SecureHash)) {
-                return response()->json(['message' => 'Sai chữ ký'], 400);
-            }
+        if (!hash_equals($secureHash, $vnp_SecureHash)) {
+            return response()->json(['message' => 'Sai chữ ký'], 400);
         }
 
         $ungHo = DB::table('ung_ho')
@@ -444,10 +443,7 @@ class DonateController extends Controller
                 DB::commit();
 
                 return redirect()->away(
-                    "https://smartdonate-phi.vercel.app/thanh-cong?" . http_build_query([
-                        'status' => 'success',
-                        'orderId' => $request->vnp_TxnRef
-                    ])
+                    env('FRONTEND_URL') . '/thanh-cong?status=success&orderId=' . $request->vnp_TxnRef
                 );
             }
 
