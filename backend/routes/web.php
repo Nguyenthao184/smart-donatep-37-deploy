@@ -15,4 +15,4 @@ Route::get('/test-chat/{cuoc_tro_chuyen}', function ($id) {
 
 Route::get('/verify-register', [AuthController::class, 'verifyRegister']);
 
-Route::get('/vnpay-return', [DonateController::class, 'vnpayReturn']);
+Route::get('/vnpay/return', [DonateController::class, 'vnpayReturn']);
