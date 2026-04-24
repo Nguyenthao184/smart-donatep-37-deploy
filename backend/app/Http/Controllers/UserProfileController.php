@@ -239,38 +239,37 @@ class UserProfileController extends Controller
     }
 
     // Cập nhật địa chỉ
+    public function updateDiaChi(UpdateDiaChiRequest $request)
+    {
+        $user = auth()->user();
 
-public function updateDiaChi(UpdateDiaChiRequest $request)
-{
-    $user = auth()->user();
+        $diaChi = $request->dia_chi;
 
-    $diaChi = $request->dia_chi;
+        $geo = app(GeocodingService::class);
+        $coords = $geo->geocode($diaChi);
 
-    $geo = app(GeocodingService::class);
-    $coords = $geo->geocode($diaChi);
+        $lat = null;
+        $lng = null;
+        $region = null;
 
-    $lat = null;
-    $lng = null;
-    $region = null;
+        if ($coords) {
+            $lat = $coords['lat'];
+            $lng = $coords['lng'];
+            $region = $geo->makeRegion($lat, $lng);
+        }
 
-    if ($coords) {
-        $lat = $coords['lat'];
-        $lng = $coords['lng'];
-        $region = $geo->makeRegion($lat, $lng);
+        $user->update([
+            'dia_chi' => $diaChi,
+            'lat' => $lat,
+            'lng' => $lng,
+            'region' => $region,
+        ]);
+
+        return response()->json([
+            'message' => 'Cập nhật địa chỉ thành công',
+            'data' => $user
+        ]);
     }
-
-    $user->update([
-        'dia_chi' => $diaChi,
-        'lat' => $lat,
-        'lng' => $lng,
-        'region' => $region,
-    ]);
-
-    return response()->json([
-        'message' => 'Cập nhật địa chỉ thành công',
-        'data' => $user
-    ]);
-}
 
     private function resolveMediaUrl(?string $value): ?string
     {

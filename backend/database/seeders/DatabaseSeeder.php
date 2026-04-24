@@ -18,6 +18,7 @@ use Database\Seeders\UngHoSeeder;
 use Database\Seeders\GiaoDichQuySeeder;
 use Database\Seeders\FraudDemoSeeder;
 use Database\Seeders\DanhMucBaiDangSeeder;
+use Database\Seeders\ChiTieuChienDichSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -37,6 +38,7 @@ class DatabaseSeeder extends Seeder
             ChienDichGayQuySeeder::class,
             UngHoSeeder::class,
             GiaoDichQuySeeder::class,
+            ChiTieuChienDichSeeder::class,
             NguoiDungVaiTroSeeder::class,
             DanhMucBaiDangSeeder::class,
             FraudDemoSeeder::class,
