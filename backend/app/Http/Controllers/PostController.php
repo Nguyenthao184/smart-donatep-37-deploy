@@ -24,26 +24,28 @@ use Illuminate\Support\Facades\Http;
 class PostController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
-        $latest = BaiDang::query()
-            ->with('nguoiDung')
-            ->where('created_at', '>=', now()->subMinutes(10))
-            ->orderByDesc('created_at')
-            ->limit(5)
-            ->get();
+        $perPage = (int) $request->query('per_page', 10);
+        $perPage = max(1, min($perPage, 50));
 
-        $random = BaiDang::query()
+        $query = BaiDang::query()
             ->with('nguoiDung')
-            ->whereNotIn('id', $latest->pluck('id'))
-            ->inRandomOrder()
-            ->limit(20)
-            ->get();
+            ->whereNotIn('trang_thai', ['DA_TANG', 'DA_NHAN'])
+            ->orderByRaw('
+        CASE 
+            WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 1000
+            WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 100
+            ELSE 0
+        END DESC
+    ')
+            ->orderByRaw('RAND()');
 
-        $posts = $latest->concat($random);
+        $posts = $query->paginate($perPage);
+
         $currentUserId = Auth::id();
 
-        $posts = $posts->map(function (BaiDang $post) use ($currentUserId) {
+        $posts->getCollection()->transform(function (BaiDang $post) use ($currentUserId) {
 
             $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
                 ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
@@ -55,21 +57,8 @@ class PostController extends Controller
 
             $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
 
-            if ($currentUserId && $post->nguoi_dung_id == $currentUserId) {
-                $post->matches = GhepNoiAi::where('bai_dang_nguon_id', $post->id)
-                    ->with(['baiDangPhuHop.nguoiDung'])
-                    ->orderByDesc('diem_phu_hop')
-                    ->limit(5)
-                    ->get()
-                    ->map(function ($m) {
-                        return [
-                            'post' => $m->baiDangPhuHop,
-                            'score' => $m->diem_phu_hop
-                        ];
-                    });
-            } else {
-                $post->matches = null;
-            }
+            $post->is_mine = $currentUserId && $post->nguoi_dung_id == $currentUserId;
+            $post->can_edit = $currentUserId === $post->nguoi_dung_id;
 
             return $post;
         });
@@ -183,7 +172,7 @@ class PostController extends Controller
             'post_id' => $source->id,
             'posts' => $postsPayload,
             'user_has_address' => $userHasAddress,
-            'user_interests' => $userInterests,    
+            'user_interests' => $userInterests,
             'location_source' => ($source->lat && $source->lng) ? 'post' : 'user',
         ];
 
@@ -430,7 +419,7 @@ class PostController extends Controller
         $data['hinh_anh'] = $hinhAnhPaths === [] ? null : $hinhAnhPaths;
 
         $post = BaiDang::create($data);
-     
+
         $gService = app(DanhMucSuggestionService::class);
         $suggestions = $gService->suggest($post->tieu_de, $post->mo_ta);
         DanhMucBaiDang::where('bai_dang_id', $post->id)->delete();
