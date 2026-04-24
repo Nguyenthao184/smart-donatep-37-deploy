@@ -647,10 +647,8 @@ class PostController extends Controller
         }
         $user = User::findOrFail($userId);
 
-        // Check if user has address for location-based matching
         $userHasAddress = !empty($user->dia_chi);
 
-        // Get user interests from liked posts (for interest-based matching when no address)
         $userInterests = [];
         if (!$userHasAddress) {
             $userInterests = $this->calculateUserInterests($userId);
@@ -661,13 +659,11 @@ class PostController extends Controller
         $candidatePrelimit = 120;
         $aiInputLimit = 40;
 
-        // Lọc ứng viên: loại đối ứng + trạng thái active phù hợp + khác người đăng
         $candidatesQuery = BaiDang::query()
             ->with(['nguoiDung'])
             ->select('bai_dang.*')
             ->where('loai_bai', $targetLoaiBai)
             // Du lieu thuc te co the lech status (vd: CHO + CON_NHAN).
-            // Chi loai bai da ket thuc de tranh bo sot ung vien phu hop.
             ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
             ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id);
 
@@ -725,8 +721,37 @@ class PostController extends Controller
                 'data' => [],
             ]);
         }
-
+        $existingMatches = GhepNoiAi::where('bai_dang_nguon_id', $id)
+        ->with(['baiDangPhuHop.nguoiDung'])
+        ->orderByDesc('diem_phu_hop')
+        ->limit(10)
+        ->get();
+        if ($existingMatches->isNotEmpty()) {
+            $responseData = $existingMatches->map(function ($m) {
+        
+                $post = $m->baiDangPhuHop;
+        
+                $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
+                    ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                    : null;
+        
+                $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
+                $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
+                $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
+        
+                return [
+                    'post' => $post,
+                    'score' => (float) $m->diem_phu_hop,
+                    'match_percent' => round($m->diem_phu_hop * 100),
+                ];
+            });
+        
+            return response()->json([
+                'data' => $responseData
+            ]);
+        }
         $matches = $aiMatchingService->match($payload);
+       
         if (empty($matches)) {
             return response()->json([
                 'data' => [],

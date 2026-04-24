@@ -216,14 +216,12 @@ class DashboardController extends Controller
             ->where('trang_thai', 'DA_TANG')
             ->sum('so_luong');
 
-        $soNguoiDuocHoTro = DB::table('ghep_noi_ai as m')
-            ->join('bai_dang as b_cho', 'm.bai_dang_nguon_id', '=', 'b_cho.id')
-            ->join('bai_dang as b_nhan', 'm.bai_dang_phu_hop_id', '=', 'b_nhan.id')
-            ->where('b_cho.loai_bai', 'CHO')
-            ->where('m.trang_thai', 'GHEP_NOI')
+        $soNguoiDuocHoTro = DB::table('bai_dang')
+            ->where('loai_bai', 'NHAN')
+            ->where('trang_thai', 'DA_NHAN')
+            ->whereNotNull('nguoi_dung_id')
             ->distinct()
-            ->count('b_nhan.nguoi_dung_id');
-
+            ->count('nguoi_dung_id');
         return response()->json([
             'so_bai_trong_tuan' => $soBaiTrongTuan,
             'tong_do_da_tang' => $tongDoDaTang,
