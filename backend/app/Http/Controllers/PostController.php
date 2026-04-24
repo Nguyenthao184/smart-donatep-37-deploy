@@ -91,27 +91,21 @@ class PostController extends Controller
 
         $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
         $locationSource = 'unknown';
-        if ($source->lat && $source->lng) {
-            $lat = (float) $source->lat;
-            $lng = (float) $source->lng;
-            $locationSource = 'post';
-        } else {
-            $latestViewerPost = BaiDang::query()
-                ->where('nguoi_dung_id', $user->id)
-                ->whereNotNull('lat')
-                ->whereNotNull('lng')
-                ->orderByDesc('created_at')
-                ->first();
+        $latestViewerPost = BaiDang::query()
+            ->where('nguoi_dung_id', $user->id)
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->orderByDesc('created_at')
+            ->first();
 
-            if ($latestViewerPost) {
-                $lat = (float) $latestViewerPost->lat;
-                $lng = (float) $latestViewerPost->lng;
-                $locationSource = 'viewer_post';
-            } else {
-                $lat = (float) $user->lat;
-                $lng = (float) $user->lng;
-                $locationSource = 'user';
-            }
+        if ($latestViewerPost) {
+            $lat = (float) $latestViewerPost->lat;
+            $lng = (float) $latestViewerPost->lng;
+            $locationSource = 'viewer_post';
+        } else {
+            $lat = (float) $user->lat;
+            $lng = (float) $user->lng;
+            $locationSource = 'user';
         }
 
         $distanceExpr = "(6371 * acos(
@@ -125,6 +119,7 @@ class PostController extends Controller
             ->where('loai_bai', $source->loai_bai)
             ->where('id', '!=', $source->id)
             ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id)
+            ->where('nguoi_dung_id', '!=', $user->id)
             ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
             ->whereNotNull('lat')
             ->whereNotNull('lng')
@@ -140,6 +135,7 @@ class PostController extends Controller
                 ->where('loai_bai', $source->loai_bai)
                 ->where('id', '!=', $source->id)
                 ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id)
+                ->where('nguoi_dung_id', '!=', $user->id)
                 ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
                 ->whereNotNull('lat')
                 ->whereNotNull('lng')
@@ -657,83 +653,83 @@ class PostController extends Controller
 
 
     public function matches(int $id, AiMatchingService $aiMatchingService)
-{
-    $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
+    {
+        $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
 
-    $userId = (int) Auth::id();
-    if ((int) $source->nguoi_dung_id !== $userId) {
-        return response()->json([
-            'message' => 'Chỉ chủ bài đăng mới được phép xem matches.'
-        ], 403);
-    }
+        $userId = (int) Auth::id();
+        if ((int) $source->nguoi_dung_id !== $userId) {
+            return response()->json([
+                'message' => 'Chỉ chủ bài đăng mới được phép xem matches.'
+            ], 403);
+        }
 
-    $user = User::findOrFail($userId);
-    $userHasAddress = !empty($user->dia_chi);
+        $user = User::findOrFail($userId);
+        $userHasAddress = !empty($user->dia_chi);
 
-    $userInterests = [];
-    if (!$userHasAddress) {
-        $userInterests = $this->calculateUserInterests($userId);
-    }
+        $userInterests = [];
+        if (!$userHasAddress) {
+            $userInterests = $this->calculateUserInterests($userId);
+        }
 
-    $candidates = $this->buildCandidates($source);
+        $candidates = $this->buildCandidates($source);
 
-    if ($candidates->isEmpty()) {
+        if ($candidates->isEmpty()) {
+            return response()->json([
+                'data' => [],
+                'status' => 'no_candidate'
+            ]);
+        }
+
+        $matches = $this->runAiMatching($source, $candidates, $userHasAddress, $userInterests, $aiMatchingService);
+
+        if (!empty($matches)) {
+
+            $responseData = $this->mapAiMatchesToResponse($source, $matches, true);
+
+            return response()->json([
+                'data' => $responseData,
+                'source' => 'ai'
+            ]);
+        }
+
+        $existingMatches = GhepNoiAi::where('bai_dang_nguon_id', $id)
+            ->with(['baiDangPhuHop.nguoiDung'])
+            ->orderByDesc('diem_phu_hop')
+            ->limit(10)
+            ->get();
+
+        if ($existingMatches->isNotEmpty()) {
+
+            $responseData = $existingMatches->map(function ($m) {
+
+                $post = $m->baiDangPhuHop;
+
+                $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
+                    ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                    : null;
+
+                $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
+                $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
+                $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
+
+                return [
+                    'post' => $post,
+                    'score' => (float)$m->diem_phu_hop,
+                    'match_percent' => round(min(100, max(0, ($m->diem_phu_hop / 10) * 100)), 2),
+                ];
+            });
+
+            return response()->json([
+                'data' => $responseData,
+                'source' => 'db_fallback'
+            ]);
+        }
+
         return response()->json([
             'data' => [],
-            'status' => 'no_candidate'
+            'status' => 'no_match'
         ]);
     }
-
-    $matches = $this->runAiMatching($source, $candidates, $userHasAddress, $userInterests, $aiMatchingService);
-
-    if (!empty($matches)) {
-
-        $responseData = $this->mapAiMatchesToResponse($source, $matches, true);
-
-        return response()->json([
-            'data' => $responseData,
-            'source' => 'ai'
-        ]);
-    }
-
-    $existingMatches = GhepNoiAi::where('bai_dang_nguon_id', $id)
-        ->with(['baiDangPhuHop.nguoiDung'])
-        ->orderByDesc('diem_phu_hop')
-        ->limit(10)
-        ->get();
-
-    if ($existingMatches->isNotEmpty()) {
-
-        $responseData = $existingMatches->map(function ($m) {
-
-            $post = $m->baiDangPhuHop;
-
-            $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
-                : null;
-
-            $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-            $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
-            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
-
-            return [
-                'post' => $post,
-                'score' => (float)$m->diem_phu_hop,
-                'match_percent' => round(min(100, max(0, ($m->diem_phu_hop / 10) * 100)), 2),
-            ];
-        });
-
-        return response()->json([
-            'data' => $responseData,
-            'source' => 'db_fallback'
-        ]);
-    }
-
-    return response()->json([
-        'data' => [],
-        'status' => 'no_match'
-    ]);
-}
 
     private function buildCandidates(BaiDang $source)
     {
