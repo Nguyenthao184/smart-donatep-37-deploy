@@ -32,45 +32,7 @@ class FindPostMatches implements ShouldQueue
                 return;
             }
             Log::info('FindPostMatches: Starting', ['post_id' => $this->postId]);
-            $targetLoaiBai = $source->loai_bai === 'CHO' ? 'NHAN' : 'CHO';
-            $targetLoaiBai = $source->loai_bai === 'CHO' ? 'NHAN' : 'CHO';
-            $maxRadiusKm = 20.0;
-            $candidatePrelimit = 120;
-            $aiInputLimit = 40;
-
-            $candidatesQuery = BaiDang::query()
-                ->with('nguoiDung')
-                ->select('bai_dang.*')
-                ->where('loai_bai', $targetLoaiBai)
-                ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
-                ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id);
-            if (!empty($source->region)) {
-                $nearRegions = $this->neighborRegions($source->region);
-                $regions = array_values(array_unique(array_filter(array_merge([$source->region], $nearRegions))));
-                $candidatesQuery->whereIn('region', $regions);
-            }
-            if ($source->lat !== null && $source->lng !== null) {
-                $distanceExpr = "(6371 * acos( cos(radians(?)) * cos(radians(bai_dang.lat)) * cos(radians(bai_dang.lng) - radians(?)) + sin(radians(?)) * sin(radians(bai_dang.lat)) ))";
-                $candidatesQuery->whereNotNull('bai_dang.lat')
-                    ->whereNotNull('bai_dang.lng')
-                    ->whereRaw("$distanceExpr <= ?", [
-                        $source->lat,
-                        $source->lng,
-                        $source->lat,
-                        $maxRadiusKm,
-                    ]);
-                $distanceExprSelect = "(6371 * acos( cos(radians(" . (float) $source->lat . ")) * cos(radians(bai_dang.lat)) * cos(radians(bai_dang.lng) - radians(" . (float) $source->lng . ")) + sin(radians(" . (float) $source->lat . ")) * sin(radians(bai_dang.lat)) ))";
-                $candidatesQuery->addSelect(DB::raw($distanceExprSelect . " as distance_km"))
-                    ->orderBy('distance_km', 'asc');
-            } else {
-                $candidatesQuery->orderByDesc('created_at');
-            }
-            $candidates = $candidatesQuery->limit($candidatePrelimit)->get();
-            if ($source->lat !== null && $source->lng !== null) {
-                $candidates = $candidates->sortBy('distance_km')->take($aiInputLimit)->values();
-            } else {
-                $candidates = $candidates->take($aiInputLimit)->values();
-            }
+            $candidates = $this->buildCandidates($source);
             if ($candidates->isEmpty()) {
                 Log::info('FindPostMatches: No candidates found', ['post_id' => $this->postId]);
                 return;
@@ -184,5 +146,39 @@ class FindPostMatches implements ShouldQueue
             }
         }
         return $rows;
+    }
+
+    private function buildCandidates(BaiDang $source)
+    {
+        $targetLoaiBai = $source->loai_bai === 'CHO' ? 'NHAN' : 'CHO';
+        $query = BaiDang::query()
+            ->with(['nguoiDung'])
+            ->select('bai_dang.*')
+            ->where('loai_bai', $targetLoaiBai)
+            ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
+            ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id);
+
+        if (!empty($source->region)) {
+            $nearRegions = $this->neighborRegions($source->region);
+            $regions = array_values(array_unique(array_filter(array_merge([$source->region], $nearRegions))));
+            $query->whereIn('region', $regions);
+        }
+
+        if ($source->lat !== null && $source->lng !== null) {
+            $distanceExpr = "(6371 * acos(
+                cos(radians(" . (float) $source->lat . ")) * cos(radians(bai_dang.lat)) *
+                cos(radians(bai_dang.lng) - radians(" . (float) $source->lng . ")) +
+                sin(radians(" . (float) $source->lat . ")) * sin(radians(bai_dang.lat))
+            ))";
+            $query->whereNotNull('bai_dang.lat')
+                ->whereNotNull('bai_dang.lng')
+                ->whereRaw("$distanceExpr <= 20")
+                ->addSelect(DB::raw($distanceExpr . " as distance_km"))
+                ->orderBy('distance_km', 'asc');
+        } else {
+            $query->orderByDesc('created_at');
+        }
+
+        return $query->limit(40)->get();
     }
 }
