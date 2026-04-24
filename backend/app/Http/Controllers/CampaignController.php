@@ -415,14 +415,17 @@ class CampaignController extends Controller
             now()->diffInDays($chienDich->ngay_ket_thuc, false)
         ));
 
-        $images = $chienDich->hinh_anh;
+        $images = json_decode($chienDich->hinh_anh, true) ?? [];
 
-        // nếu là string thì decode
-        if (is_string($images)) {
-            $images = json_decode($images, true);
-        }
+        $images = array_map(function ($img) {
+            if (str_starts_with($img, 'http')) {
+                return $img;
+            }
 
-        $images = $images ?? [];
+            // nếu là path thì convert sang URL
+            return asset('storage/' . $img);
+
+        }, $images);
 
         $pageSize = 6;
 
