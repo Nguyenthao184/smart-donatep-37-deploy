@@ -60,7 +60,7 @@ class DonateController extends Controller
 
             DB::commit();
 
-            // ===== CASE 1: BANKING (QR) =====
+            // ===== CASE 1: MOMO =====
             if ($request->phuong_thuc_thanh_toan === 'momo') {
                 $tk = $campaign->taiKhoanGayQuy;
                 $endpoint = "https://test-payment.momo.vn/v2/gateway/api/create";
@@ -146,7 +146,6 @@ class DonateController extends Controller
                 $vnp_Url = config('services.vnpay.url');
                 $vnp_Returnurl = config('services.vnpay.return_url');
 
-                // VNPAY: chữ ký do server tạo từ tham số vnp_* — không lấy từ body API (request chỉ có chien_dich_gay_quy_id, so_tien).
                 $vnp_TxnRef = (string) $ungHoId;
 
                 DB::table('ung_ho')
@@ -155,7 +154,7 @@ class DonateController extends Controller
                         'payment_ref' => $vnp_TxnRef
                     ]);
 
-                $vnp_Amount = $request->so_tien * 100;
+                $vnp_Amount = (int) round((float) $request->so_tien * 100);
                 $vnp_IpAddr = $request->header('X-Forwarded-For');
                 if ($vnp_IpAddr) {
                     $vnp_IpAddr = explode(',', $vnp_IpAddr)[0];
@@ -180,10 +179,11 @@ class DonateController extends Controller
                 ];
 
                 ksort($inputData);
-                $hashData = "";
-                $query = "";
+                $hashData = '';
+                $query = '';
+
                 foreach ($inputData as $key => $value) {
-                    $hashData .= $key . '=' . $value . '&';
+                    $hashData .= urlencode($key) . '=' . urlencode($value) . '&';
                     $query .= urlencode($key) . '=' . urlencode($value) . '&';
                 }
 
@@ -191,8 +191,10 @@ class DonateController extends Controller
                 $query = rtrim($query, '&');
 
                 $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+
                 $paymentUrl = $vnp_Url . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
 
+                // DEBUG
                 \Log::info('VNPAY CREATE', [
                     'hashData' => $hashData,
                     'secureHash' => $vnpSecureHash,
@@ -283,46 +285,9 @@ class DonateController extends Controller
         return $str;
     }
 
-    // private function vnpVerifySignature(array $params): bool
-    // {
-    //     $secureHash = $params['vnp_SecureHash'] ?? null;
-
-    //     if (!$secureHash) {
-    //         return false;
-    //     }
-
-    //     // bỏ hash ra trước khi tạo chữ ký
-    //     unset($params['vnp_SecureHash'], $params['vnp_SecureHashType']);
-
-    //     // sort giống VNPAY
-    //     ksort($params);
-
-    //     // build chuỗi hash giống mẫu VNPAY
-    //     $hashData = '';
-    //     $i = 0;
-
-    //     foreach ($params as $key => $value) {
-    //         if ($i == 1) {
-    //             $hashData .= '&' . $key . '=' . $value;
-    //         } else {
-    //             $hashData .= $key . "=" . $value;
-    //             $i = 1;
-    //         }
-    //     }
-
-    //     // tạo chữ ký
-    //     $calcHash = hash_hmac(
-    //         'sha512',
-    //         $hashData,
-    //         config('services.vnpay.hash_secret')
-    //     );
-
-    //     // so sánh an toàn
-    //     return hash_equals($calcHash, $secureHash);
-    // }
-
     public function vnpayReturn(Request $request)
     {
+        \Log::info('=== HIT VNPAY RETURN ===', $request->query());
         $inputData = [];
 
         foreach ($request->query() as $key => $value) {
@@ -340,7 +305,7 @@ class DonateController extends Controller
         $hashData = '';
 
         foreach ($inputData as $key => $value) {
-            $hashData .= $key . '=' . $value . '&';
+            $hashData .= $key . '=' . urlencode($value) . '&';
         }
 
         $hashData = rtrim($hashData, '&');
@@ -443,7 +408,7 @@ class DonateController extends Controller
                 DB::commit();
 
                 return redirect()->away(
-                    env('FRONTEND_URL') . '/thanh-cong?status=success&orderId=' . $request->vnp_TxnRef
+                    env('FRONTEND_URL') . '/thanh-cong?' . http_build_query($request->all())
                 );
             }
 
@@ -607,6 +572,7 @@ class DonateController extends Controller
                 'uh.created_at',
                 'uh.phuong_thuc_thanh_toan',
                 'uh.gateway_transaction_id',
+                'cd.id as chien_dich_id',
                 'cd.ten_chien_dich',
                 'nd.ho_ten',
                 'tc.ten_to_chuc'
