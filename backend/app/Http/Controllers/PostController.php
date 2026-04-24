@@ -742,7 +742,7 @@ class PostController extends Controller
                 return [
                     'post' => $post,
                     'score' => (float) $m->diem_phu_hop,
-                    'match_percent' => round($m->diem_phu_hop * 100),
+                    'match_percent' => round(min(100, max(0, ((float) $m->diem_phu_hop / 10) * 100)), 2),
                 ];
             });
         
