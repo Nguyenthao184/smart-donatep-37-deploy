@@ -90,9 +90,11 @@ class PostController extends Controller
         }
 
         $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
+        $locationSource = 'unknown';
         if ($source->lat && $source->lng) {
             $lat = (float) $source->lat;
             $lng = (float) $source->lng;
+            $locationSource = 'post';
         } else {
             $latestViewerPost = BaiDang::query()
                 ->where('nguoi_dung_id', $user->id)
@@ -122,7 +124,7 @@ class PostController extends Controller
             ->select('bai_dang.*')
             ->where('loai_bai', $source->loai_bai)
             ->where('id', '!=', $source->id)
-            ->where('nguoi_dung_id', '!=', $user->id)
+            ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id)
             ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
             ->whereNotNull('lat')
             ->whereNotNull('lng')
@@ -137,7 +139,7 @@ class PostController extends Controller
                 ->select('bai_dang.*')
                 ->where('loai_bai', $source->loai_bai)
                 ->where('id', '!=', $source->id)
-                ->where('nguoi_dung_id', '!=', $user->id)
+                ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id)
                 ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
                 ->whereNotNull('lat')
                 ->whereNotNull('lng')
