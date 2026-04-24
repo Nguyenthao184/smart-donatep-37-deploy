@@ -30,13 +30,6 @@ class NguoiDungVaiTroSeeder extends Seeder
                 'vai_tro_id' => 2
             ]);
 
-            if ($user->id == 3) {
-                DB::table('nguoi_dung_vai_tro')->insert([
-                    'nguoi_dung_id' => $user->id,
-                    'vai_tro_id' => 3
-                ]);
-                continue;
-            }
 
             // NẾU CÓ TỔ CHỨC → THÊM ROLE TỔ CHỨC
             $hasOrg = DB::table('to_chuc')
