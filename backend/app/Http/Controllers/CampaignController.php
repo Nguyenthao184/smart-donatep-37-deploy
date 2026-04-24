@@ -415,17 +415,11 @@ class CampaignController extends Controller
             now()->diffInDays($chienDich->ngay_ket_thuc, false)
         ));
 
-        $images = json_decode($chienDich->hinh_anh, true) ?? [];
-
-        $images = array_map(function ($img) {
-            if (str_starts_with($img, 'http')) {
-                return $img;
-            }
-
-            // nếu là path thì convert sang URL
-            return asset('storage/' . $img);
-
-        }, $images);
+        $images = $chienDich->hinh_anh;
+        if (is_string($images)) {
+            $images = json_decode($images, true);
+        }
+        $images = $images ?? [];
 
         $pageSize = 6;
 
@@ -582,8 +576,11 @@ class CampaignController extends Controller
 
         $ngayConLai = max(0, floor(now()->diffInDays($item->ngay_ket_thuc, false)));
 
-        $images = json_decode($item->hinh_anh, true);
-        $image = $images[0] ?? null;
+        $images = $item->hinh_anh;
+        if (is_string($images)) {
+            $images = json_decode($images, true);
+        }
+        $images = $images ?? [];
 
         $soTienConThieu = 0;
         if (
