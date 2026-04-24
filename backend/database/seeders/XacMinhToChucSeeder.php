@@ -76,8 +76,7 @@ class XacMinhToChucSeeder extends Seeder
         $users = DB::table('nguoi_dung')
             ->whereNotIn('ten_tai_khoan', [
                 'admin',
-                'user',
-                'tochuc'
+                'user'
             ])
             ->limit(10)
             ->get();
