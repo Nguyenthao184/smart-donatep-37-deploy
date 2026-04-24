@@ -33,6 +33,7 @@ Route::get('/map/campaigns', [CampaignController::class, 'map']);
 Route::get('/posts', [PostController::class, 'index']);
 Route::get('/posts/{id}', [PostController::class, 'show'])->whereNumber('id');
 Route::get('/posts/{id}/comments', [PostCommentController::class, 'index'])->whereNumber('id');
+Route::get('/dashboard/community-stats', [DashboardController::class, 'communityStats']);
 
 // ds danh mục
 Route::get('/categories', [CampaignController::class, 'getDanhMuc']);
@@ -134,7 +135,6 @@ Route::middleware('auth:sanctum')->group(function(){
     // Feed - user và tổ chức: đăng/cập nhật/xóa 
     Route::middleware('role:NGUOI_DUNG,TO_CHUC')->group(function () {
         // CRUD posts
-        Route::get('/dashboard/community-stats', [DashboardController::class, 'communityStats']);
         Route::post('/posts', [PostController::class, 'store']);
         Route::get('/posts/me', [PostController::class, 'me']);
         Route::get('/posts/{id}/related', [PostController::class, 'related']);
