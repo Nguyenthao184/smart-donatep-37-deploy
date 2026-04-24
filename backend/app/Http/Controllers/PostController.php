@@ -29,20 +29,30 @@ class PostController extends Controller
         $perPage = (int) $request->query('per_page', 10);
         $perPage = max(1, min($perPage, 50));
 
+        $keyword = trim((string) $request->query('keyword', ''));
+        $loaiBai = strtoupper((string) $request->query('loai_bai', ''));
         $query = BaiDang::query()
             ->with('nguoiDung')
-            ->whereNotIn('trang_thai', ['DA_TANG', 'DA_NHAN'])
-            ->orderByRaw('
-        CASE 
-            WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 1000
-            WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 100
-            ELSE 0
-        END DESC
-    ')
+            ->whereNotIn('trang_thai', ['DA_TANG', 'DA_NHAN']);
+        $this->applyPostLikeAggregates($query);
+        if (in_array($loaiBai, ['CHO', 'NHAN'])) {
+            $query->where('loai_bai', $loaiBai);
+        }
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('tieu_de', 'like', "%$keyword%")
+                    ->orWhere('mo_ta', 'like', "%$keyword%");
+            });
+        }
+        $query->orderByRaw('
+    CASE 
+        WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 1000
+        WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 100
+        ELSE 0
+    END DESC
+')
             ->orderByRaw('RAND()');
-
         $posts = $query->paginate($perPage);
-
         $currentUserId = Auth::id();
 
         $posts->getCollection()->transform(function (BaiDang $post) use ($currentUserId) {
@@ -59,6 +69,7 @@ class PostController extends Controller
 
             $post->is_mine = $currentUserId && $post->nguoi_dung_id == $currentUserId;
             $post->can_edit = $currentUserId === $post->nguoi_dung_id;
+            $this->decoratePostLikeFields($post);
 
             return $post;
         });
