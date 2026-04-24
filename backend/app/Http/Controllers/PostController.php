@@ -147,10 +147,15 @@ class PostController extends Controller
         }
 
         if ($candidates->isEmpty()) {
-            return response()->json([
-                'data' => [],
-                'status' => 'empty'
-            ]);
+            $candidates = BaiDang::query()
+                ->select('bai_dang.*')
+                ->where('loai_bai', $source->loai_bai)
+                ->where('id', '!=', $source->id)
+                ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id)
+                ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
+                ->inRandomOrder()
+                ->limit(40)
+                ->get();
         }
 
         $sourceText = $this->normalizeVietnameseText(($source->tieu_de ?? '') . ' ' . ($source->mo_ta ?? ''));
@@ -231,9 +236,11 @@ class PostController extends Controller
             foreach ($reasonCodes as $code) {
                 $reasonsVi[] = $reasonMapVi[$code] ?? (string) $code;
             }
-
+            $post->dia_diem = $user->dia_chi ?? $post->dia_diem;
+            $post->display_location_source = $locationSource;
             $responseData[] = [
                 'post' => $post,
+                
                 'score' => (float) $item['score'],
                 'distance_km' => array_key_exists('distance', $item) && $item['distance'] !== null
                     ? (float) $item['distance']
