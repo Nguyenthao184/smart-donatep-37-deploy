@@ -206,34 +206,28 @@ class DashboardController extends Controller
         return response()->json($result);
     }
     public function communityStats()
-{
-    $userId = auth()->id();
+    {
+        $soBaiTrongTuan = DB::table('bai_dang')
+            ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->count();
 
-    $soBaiTrongTuan = DB::table('bai_dang')
-        ->where('nguoi_dung_id', $userId)
-        ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
-        ->count();
+        $tongDoDaTang = DB::table('bai_dang')
+            ->where('loai_bai', 'CHO')
+            ->where('trang_thai', 'DA_TANG')
+            ->sum('so_luong');
 
-    $tongDoDaTang = DB::table('bai_dang')
-    ->where('nguoi_dung_id', $userId)
-    ->where('loai_bai', 'CHO')
-    ->where('trang_thai', 'DA_TANG')
-    ->sum('so_luong');
+        $soNguoiDuocHoTro = DB::table('ghep_noi_ai as m')
+            ->join('bai_dang as b_cho', 'm.bai_dang_nguon_id', '=', 'b_cho.id')
+            ->join('bai_dang as b_nhan', 'm.bai_dang_phu_hop_id', '=', 'b_nhan.id')
+            ->where('b_cho.loai_bai', 'CHO')
+            ->where('m.trang_thai', 'GHEP_NOI')
+            ->distinct()
+            ->count('b_nhan.nguoi_dung_id');
 
-    $soNguoiDuocHoTro = DB::table('ghep_noi_ai as m')
-    ->join('bai_dang as b_cho', 'm.bai_dang_nguon_id', '=', 'b_cho.id')
-    ->join('bai_dang as b_nhan', 'm.bai_dang_phu_hop_id', '=', 'b_nhan.id')
-    ->where('b_cho.nguoi_dung_id', $userId)
-    ->where('b_cho.loai_bai', 'CHO')
-    ->where('b_cho.trang_thai', 'GHEP_NOI')
-    ->distinct()
-    ->count('b_nhan.nguoi_dung_id');
-
-
-    return response()->json([
-        'so_bai_trong_tuan' => $soBaiTrongTuan,
-        'tong_do_da_tang' => $tongDoDaTang,
-        'so_nguoi_duoc_tang' => $soNguoiDuocHoTro,
-    ]);
-}
+        return response()->json([
+            'so_bai_trong_tuan' => $soBaiTrongTuan,
+            'tong_do_da_tang' => $tongDoDaTang,
+            'so_nguoi_duoc_tang' => $soNguoiDuocHoTro,
+        ]);
+    }
 }

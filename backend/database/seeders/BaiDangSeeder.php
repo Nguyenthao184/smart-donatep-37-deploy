@@ -30,7 +30,7 @@ class BaiDangSeeder extends Seeder
 
         $normalUsers = array_diff($nguoiDungIds, $inactiveUsers);
 
-       
+
 
         $locations = [
             ['dia_diem' => 'Hải Châu', 'lat' => 16.0471, 'lng' => 108.2068],
@@ -49,18 +49,57 @@ class BaiDangSeeder extends Seeder
             ['dia_diem' => 'Thanh Khê', 'lat' => 16.0600, 'lng' => 108.1900],
 
             ['dia_diem' => 'Hà Nội', 'lat' => 21.0278, 'lng' => 105.8342],
-            ['dia_diem' => 'Hà Nội - Cầu Giấy', 'lat' => 21.0360, 'lng' => 105.8000],
+            ['dia_diem' => 'Hải Phòng', 'lat' => 20.8449, 'lng' => 106.6881],
+            ['dia_diem' => 'Quảng Ninh', 'lat' => 21.0064, 'lng' => 107.2925],
+            ['dia_diem' => 'Bắc Ninh', 'lat' => 21.1214, 'lng' => 106.1110],
+            ['dia_diem' => 'Hải Dương', 'lat' => 20.9373, 'lng' => 106.3145],
+            ['dia_diem' => 'Nam Định', 'lat' => 20.4388, 'lng' => 106.1621],
+            ['dia_diem' => 'Thái Bình', 'lat' => 20.4463, 'lng' => 106.3366],
+            ['dia_diem' => 'Ninh Bình', 'lat' => 20.2506, 'lng' => 105.9744],
+            ['dia_diem' => 'Thanh Hóa', 'lat' => 19.8067, 'lng' => 105.7851],
+            ['dia_diem' => 'Nghệ An', 'lat' => 18.6796, 'lng' => 105.6813],
+
+            ['dia_diem' => 'Huế', 'lat' => 16.4637, 'lng' => 107.5909],
+            ['dia_diem' => 'Quảng Nam', 'lat' => 15.5737, 'lng' => 108.4740],
+            ['dia_diem' => 'Quảng Ngãi', 'lat' => 15.1214, 'lng' => 108.8044],
+            ['dia_diem' => 'Bình Định', 'lat' => 13.7820, 'lng' => 109.2196],
+            ['dia_diem' => 'Phú Yên', 'lat' => 13.0882, 'lng' => 109.0929],
+            ['dia_diem' => 'Khánh Hòa', 'lat' => 12.2585, 'lng' => 109.0526],
+            ['dia_diem' => 'Ninh Thuận', 'lat' => 11.5658, 'lng' => 108.9886],
+            ['dia_diem' => 'Bình Thuận', 'lat' => 10.9804, 'lng' => 108.2615],
+
+            ['dia_diem' => 'Đắk Lắk', 'lat' => 12.7100, 'lng' => 108.2378],
+            ['dia_diem' => 'Gia Lai', 'lat' => 13.8079, 'lng' => 108.1094],
+            ['dia_diem' => 'Kon Tum', 'lat' => 14.3497, 'lng' => 108.0005],
+            ['dia_diem' => 'Lâm Đồng', 'lat' => 11.9404, 'lng' => 108.4583],
 
             ['dia_diem' => 'Hồ Chí Minh', 'lat' => 10.8231, 'lng' => 106.6297],
-            ['dia_diem' => 'Hồ Chí Minh - Thủ Đức', 'lat' => 10.8500, 'lng' => 106.6200],
+            ['dia_diem' => 'Bình Dương', 'lat' => 11.3254, 'lng' => 106.4770],
+            ['dia_diem' => 'Đồng Nai', 'lat' => 11.0686, 'lng' => 107.1676],
+            ['dia_diem' => 'Long An', 'lat' => 10.6956, 'lng' => 106.2431],
+            ['dia_diem' => 'Tiền Giang', 'lat' => 10.4493, 'lng' => 106.3420],
+            ['dia_diem' => 'Bến Tre', 'lat' => 10.2434, 'lng' => 106.3756],
+            ['dia_diem' => 'Vĩnh Long', 'lat' => 10.2530, 'lng' => 105.9722],
+            ['dia_diem' => 'Cần Thơ', 'lat' => 10.0452, 'lng' => 105.7469],
+            ['dia_diem' => 'An Giang', 'lat' => 10.5216, 'lng' => 105.1259],
+            ['dia_diem' => 'Kiên Giang', 'lat' => 10.0125, 'lng' => 105.0809],
         ];
 
-        // 🎯 Hàm random lệch vị trí (~500m - 1km)
         function randomizeLatLng($lat, $lng)
         {
+            $radius = mt_rand(100, 800);
+
+            $radiusInDegrees = $radius / 111320;
+
+            $u = mt_rand() / mt_getrandmax();
+            $v = mt_rand() / mt_getrandmax();
+
+            $w = $radiusInDegrees * sqrt($u);
+            $t = 2 * pi() * $v;
+
             return [
-                'lat' => $lat + (mt_rand(-100, 100) / 10000),
-                'lng' => $lng + (mt_rand(-100, 100) / 10000),
+                'lat' => $lat + $w * cos($t),
+                'lng' => $lng + $w * sin($t),
             ];
         }
         function fakeRegion($lat, $lng)
@@ -100,7 +139,7 @@ class BaiDangSeeder extends Seeder
 
 
                 'Gạo' => ['posts/gao_cho.jpg', 'posts/gao_1_cho.jpg', 'posts/gao_2_cho.jpg', 'posts/gao_3_cho.jpg'],
-                'Mì tôm' => ['posts/mi_tom_1_cho.jpg'],
+                'Thùng Mì tôm' => ['posts/mi_tom_1_cho.jpg'],
                 'Gạo + Mì' => ['posts/gao_mi_cho.jpg', 'posts/gao_cho.jpg', 'posts/mi_tom_1_cho.jpg'],
                 'Rau củ' => ['posts/rau_cho.jpg'],
                 'Sữa' => ['posts/sua_cho.jpg'],
@@ -113,6 +152,16 @@ class BaiDangSeeder extends Seeder
                     'posts/sua_cho.jpg',
                     'posts/gao_mi_cho.jpg',
                 ],
+                'Bàn học' => [],
+                'Ghế học sinh' => [],
+                'Quạt điện' => [],
+                'Bếp gas' => [],
+                'Nồi niêu' => [],
+                'Tủ lạnh' => [],
+                'Máy giặt' => [],
+                'Bàn ghế' => [],
+                'Giường' => [],
+                'Tủ quần áo' => [],
 
                 'Sách bút' => ['posts/sach_but_cho.png', 'posts/vo_but_chi_cho.jpg', 'posts/but_cho.jpg'],
                 'Cặp học sinh' => ['posts/cap_hoc_sinh_cho.png'],
@@ -146,7 +195,7 @@ class BaiDangSeeder extends Seeder
                     'posts/gao_nhan.jpg',
                     'posts/gao_1_nhan.jpg',
                 ],
-                'Mì tôm' => [
+                'Thùng Mì tôm' => [
                     'posts/mi_tom_nhan.jpg',
                     'posts/mi_tom_1_nhan.jpg',
                 ],
@@ -162,27 +211,37 @@ class BaiDangSeeder extends Seeder
                 'Nhu yếu phẩm' => [
                     'posts/nhu_yeu_pham_nhan.jpg',
                 ],
+                'Thực phẩm' => [],
+                'Sách bút' => [
+                    'posts/sach_but_nhan.jpg',
+                    'posts/sach_but_1_nhan.jpg',
+                ],
+                'Cặp học sinh' => [
+                    'posts/cap_hoc_sinh_nhan.jpg',
+                ],
+                'Đồ gia dụng' => [
+                    'posts/do_gia_dung_nhan.jpg',
+                ],
+                'Nồi cơm' => [
+                    'posts/noi_com_nhan.jpg',
+                ],
+                'Xe máy' => [],
+                'Xe đạp' => [],
+                'Bàn học' => [],
+                'Ghế học sinh' => [],
+                'Quạt điện' => [],
+                'Bếp gas' => [],
+                'Nồi niêu' => [],
+                'Tủ lạnh' => [],
+                'Máy giặt' => [],
+                'Bàn ghế' => [],
+                'Giường' => [],
+                'Tủ quần áo' => [],
             ],
-            'Thực phẩm' => [],
-            'Sách bút' => [
-                'posts/sach_but_nhan.jpg',
-                'posts/sach_but_1_nhan.jpg',
-            ],
-            'Cặp học sinh' => [
-                'posts/cap_hoc_sinh_nhan.jpg',
-            ],
-            'Đồ gia dụng' => [
-                'posts/do_gia_dung_nhan.jpg',
-            ],
-            'Nồi cơm' => [
-                'posts/noi_com_nhan.jpg',
-            ],
-            'Xe máy' => [],
-            'Xe đạp' => [],
         ];
 
         for ($i = 1; $i <= $count; $i++) {
-            
+
             $rand = rand(1, 100);
             if ($rand <= 30) {
                 $nguoiDungId = Arr::random($activeUsers);
@@ -211,17 +270,32 @@ class BaiDangSeeder extends Seeder
                 'Quần áo',
                 'Quần áo mùa đông',
                 'Quần áo mùa hè',
+
                 'Gạo',
-                'Mì tôm',
+                'Thùng Mì tôm',
                 'Gạo + Mì',
                 'Rau củ',
                 'Sữa',
-                'Nhu yếu phẩm',
                 'Thực phẩm',
+                'Nhu yếu phẩm',
+
                 'Sách bút',
                 'Cặp học sinh',
+                'Bàn học',
+                'Ghế học sinh',
+
                 'Đồ gia dụng',
                 'Nồi cơm',
+                'Quạt điện',
+                'Bếp gas',
+                'Nồi niêu',
+                'Tủ lạnh',
+                'Máy giặt',
+
+                'Bàn ghế',
+                'Giường',
+                'Tủ quần áo',
+
                 'Xe máy',
                 'Xe đạp',
             ];
@@ -230,62 +304,93 @@ class BaiDangSeeder extends Seeder
 
             $tieuDeSamples = [
                 "Cho {$tenChuDe} còn dùng tốt",
-                "Mình tặng {$tenChuDe} cho ai cần",
-                "Có {$tenChuDe} không dùng tới",
-                "Ai cần {$tenChuDe} thì liên hệ mình",
-                "Còn dư {$tenChuDe}, muốn cho lại",
+                "Tặng {$tenChuDe} còn mới ~80%",
+                "Có {$tenChuDe} dư cần cho lại",
+                "Thanh lý {$tenChuDe} miễn phí",
+                "Cho {$tenChuDe}, ai cần liên hệ",
             ];
 
             $tieuDeNhanSamples = [
-                "Mình cần {$tenChuDe}",
-                "Ai có {$tenChuDe} cho mình xin",
-                "Đang cần {$tenChuDe} gấp",
-                "Xin {$tenChuDe} để dùng",
-                "Bạn nào có {$tenChuDe} không dùng không ạ?",
+                "Mình cần {$tenChuDe} gấp",
+                "Ai có {$tenChuDe} cho mình xin với",
+                "Đang thiếu {$tenChuDe}, mong được hỗ trợ",
+                "Cần {$tenChuDe} để sử dụng",
+                "Bạn nào có {$tenChuDe} không dùng nữa không ạ?",
             ];
 
             $tieuDe = $loaiBai === 'CHO'
                 ? Arr::random($tieuDeSamples)
                 : Arr::random($tieuDeNhanSamples);
+
             if ($loaiBai === 'NHAN') {
+
                 $sentences = [
-                    "Mình đang cần {$tenChuDe}, ai có dư cho mình xin với ạ.",
-                    "Hiện tại mình thiếu {$tenChuDe}, mong được hỗ trợ.",
-                    "Bạn nào có {$tenChuDe} không dùng tới thì cho mình xin nhé.",
-                    "Mình cần {$tenChuDe}, có thể tự qua lấy.",
-                    "Đang hơi gấp nên cần {$tenChuDe}, cảm ơn mọi người nhiều.",
+                    "Hiện tại mình đang cần {$tenChuDe}.",
+                    "Do hoàn cảnh nên mình thiếu {$tenChuDe}.",
+                    "Nếu ai có dư mình xin lại ạ.",
+                    "Mình có thể qua lấy tận nơi.",
                 ];
+
+                $extra = [
+                    "Mình ở {$diaDiem}.",
+                    "Cảm ơn mọi người rất nhiều.",
+                    "Thật sự rất cần lúc này.",
+                ];
+                $noise = [
+                    "đang cần gấp",
+                    "rất cần lúc này",
+                    "mong được giúp đỡ",
+                    "cần sử dụng sớm",
+                ];
+
+                $randomNoise = Arr::random($noise);
                 shuffle($sentences);
+                shuffle($extra);
                 $take = rand(3, 6);
-                $moTa = implode(' ', array_slice($sentences, 0, $take));
+                $qty = rand(1, 10);
+                $moTa = "Mình cần khoảng {$qty} {$tenChuDe}, {$randomNoise}. "
+                    . implode(' ', array_merge(
+                        array_slice($sentences, 0, rand(1, 3)),
+                        array_slice($extra, 0, rand(1, 2))
+                    ));
             } else {
                 $sentences = [
                     "Mình có {$tenChuDe} không dùng nữa nên muốn cho lại.",
-                    "Còn {$tenChuDe} khá ổn, bạn nào cần thì mình tặng.",
-                    "Dọn nhà nên dư {$tenChuDe}, ai cần lấy giúp mình.",
-                    "Mình muốn cho lại {$tenChuDe}, ưu tiên người cần.",
-                    "Có {$tenChuDe}, còn dùng tốt, tặng lại cho bạn nào cần.",
+                    "Tình trạng còn khá tốt, dùng bình thường.",
+                    "Dọn nhà nên dư {$tenChuDe}.",
+                    "Ai cần thì mình tặng lại.",
                 ];
+
                 $extra = [
                     "Mình ở {$diaDiem}.",
-                    "Có thể hẹn giờ linh hoạt.",
-                    "Ai cần thật sự thì liên hệ mình nhé.",
-                    "Ưu tiên bạn nào gần khu vực.",
-                    "Cảm ơn mọi người.",
+                    "Có thể qua lấy trực tiếp.",
+                    "Ưu tiên người thật sự cần.",
+                    "Liên hệ mình sớm nhé.",
+                ];
+                $noise = [
+                    "còn dùng tốt",
+                    "gần như mới",
+                    "dùng bình thường",
+                    "không còn nhu cầu",
+                    "còn khá ổn",
                 ];
                 shuffle($sentences);
                 shuffle($extra);
-
-                $moTa = implode(' ', array_merge(
-                    array_slice($sentences, 0, rand(1, 3)),
-                    array_slice($extra, 0, rand(1, 2))
-                ));;
+                $randomNoise = Arr::random($noise);
+                $qty = rand(1, 10);
+                $moTa = "Mình có khoảng {$qty} {$tenChuDe}, {$randomNoise}. "
+                    . implode(' ', array_merge(
+                        array_slice($sentences, 0, rand(1, 3)),
+                        array_slice($extra, 0, rand(1, 2))
+                    ));
             }
 
             $hinhAnhArr = null;
             if (rand(1, 100) <= 70) {
 
-                $imgs = $imageMap[$tenChuDe] ?? null;
+                $imgs = $imageMap[$loaiBai][$tenChuDe]
+                    ?? $imageMap[$loaiBai]['Đồ gia dụng']
+                    ?? [];
 
                 if (is_array($imgs) && $imgs !== []) {
                     shuffle($imgs);
