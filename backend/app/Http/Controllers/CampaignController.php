@@ -7,13 +7,18 @@ use App\Models\ChienDichGayQuy;
 use App\Models\ToChuc;
 use App\Models\TaiKhoanGayQuy;
 use App\Models\DanhMuc;
+use App\Models\ChiTieuChienDich;
+use App\Models\GiaoDichQuy;
 use Illuminate\Support\Str;
 use App\Http\Requests\Campaign\StoreCampaignRequest;
+use App\Http\Requests\Campaign\UpdateCampaignRequest;
+use App\Http\Requests\Expense\StoreExpenseRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use App\Services\ApprovalService;
 use App\Notifications\ApprovalNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class CampaignController extends Controller
 {
@@ -81,8 +86,6 @@ class CampaignController extends Controller
             $images[] = $path;
         }
 
-        $images = collect($images)->map(fn($img) => $this->resolveMediaUrl($img));
-
         // 6. Tạo mã chuyển tiền UNIQUE
         do {
             $maCK = 'CT' . strtoupper(\Illuminate\Support\Str::random(8));
@@ -96,7 +99,7 @@ class CampaignController extends Controller
 
             'ten_chien_dich' => $request->ten_chien_dich,
             'mo_ta' => $request->mo_ta,
-            'hinh_anh' => $images,
+            'hinh_anh' => json_encode($images),
 
             'muc_tieu_tien' => $request->muc_tieu_tien,
             'so_tien_da_nhan' => 0,
@@ -113,6 +116,192 @@ class CampaignController extends Controller
         return response()->json([
             'message' => 'Tạo chiến dịch thành công, chờ duyệt',
             'data' => $chienDich
+        ]);
+    }
+
+    //hiển thị đơn tạo chiến dịch
+    public function edit($id)
+    {
+        $user = auth()->user();
+        $toChuc = $user->toChuc;
+
+        if (!$toChuc) {
+            return response()->json([
+                'message' => 'Bạn chưa phải tổ chức'
+            ], 403);
+        }
+
+        $chienDich = ChienDichGayQuy::where('id', $id)
+            ->where('to_chuc_id', $toChuc->id)
+            ->first();
+
+        if (!$chienDich) {
+            return response()->json([
+                'message' => 'Không tìm thấy chiến dịch'
+            ], 404);
+        }
+
+        // chỉ cho edit khi CHO_XU_LY
+        if ($chienDich->trang_thai !== 'CHO_XU_LY') {
+            return response()->json([
+                'message' => 'Không thể chỉnh sửa chiến dịch này'
+            ], 400);
+        }
+
+        $images = is_array($chienDich->hinh_anh)
+            ? $chienDich->hinh_anh
+            : json_decode($chienDich->hinh_anh, true);
+
+        $images = $images ?? [];
+
+        // normalize về PATH (rất quan trọng)
+        $images = array_map(function ($img) {
+            // nếu đã là URL thì giữ nguyên
+            if (str_starts_with($img, 'http')) {
+                return $img;
+            }
+
+            // nếu là path thì convert sang URL
+            return asset('storage/' . ltrim($img, '/'));
+
+        }, $images);
+
+        return response()->json([
+            'id' => $chienDich->id,
+            'ten_chien_dich' => $chienDich->ten_chien_dich,
+            'mo_ta' => $chienDich->mo_ta,
+            'danh_muc_id' => $chienDich->danh_muc_id,
+
+            'muc_tieu_tien' => $chienDich->muc_tieu_tien,
+            'ngay_ket_thuc' => $chienDich->ngay_ket_thuc, 
+
+            'vi_tri' => $chienDich->vi_tri,
+            'lat' => $chienDich->lat,
+            'lng' => $chienDich->lng,
+
+            // QUAN TRỌNG: giữ raw path
+            'hinh_anh' => $images,
+        ]);
+    }
+
+    //cập nhật chiến dịch
+    public function update(UpdateCampaignRequest $request, $id)
+    {
+        $user = auth()->user();
+        $toChuc = $user->toChuc;
+
+        if (!$toChuc) {
+            return response()->json([
+                'message' => 'Bạn chưa phải tổ chức'
+            ], 403);
+        }
+
+        $chienDich = ChienDichGayQuy::where('id', $id)
+            ->where('to_chuc_id', $toChuc->id)
+            ->first();
+
+        if (!$chienDich) {
+            return response()->json([
+                'message' => 'Không tìm thấy chiến dịch'
+            ], 404);
+        }
+
+        // chỉ cho sửa khi CHO_XU_LY
+        if ($chienDich->trang_thai !== 'CHO_XU_LY') {
+            return response()->json([
+                'message' => 'Bạn chỉ được chỉnh sửa chiến dịch khi đang chờ duyệt'
+            ], 400);
+        }
+
+        // Check vị trí
+        if ($request->lat < 8 || $request->lat > 24 ||
+            $request->lng < 102 || $request->lng > 110) {
+            return response()->json([
+                'message' => 'Vị trí không hợp lệ'
+            ], 400);
+        }
+
+        $anh_hien_tai = is_array($chienDich->hinh_anh)
+            ? $chienDich->hinh_anh
+            : json_decode($chienDich->hinh_anh, true);
+
+        $anh_hien_tai = $anh_hien_tai ?? [];
+
+        $anh_cu = $request->anh_cu ?? [];
+
+        $anh_cu = array_map(function ($img) {
+            // nếu là URL → chuyển về path
+            if (str_starts_with($img, asset('storage/'))) {
+                return str_replace(asset('storage/'), '', $img);
+            }
+
+            return $img; 
+        }, $anh_cu);
+
+        $xoa_anh = $request->xoa_anh ?? [];
+
+        foreach ($xoa_anh as $img) {
+
+            // convert URL -> path
+            if (str_starts_with($img, asset('storage/'))) {
+                $path = str_replace(asset('storage/'), '', $img);
+            } else {
+                $path = $img;
+            }
+
+            Storage::disk('public')->delete($path);
+        }
+
+        $anh_moi = [];
+
+        if ($request->hasFile('anh_moi')) {
+            foreach ($request->file('anh_moi') as $file) {
+                $anh_moi[] = $file->store('campaigns', 'public'); // lưu path
+            }
+        }
+
+        $finalImages = array_values(array_merge($anh_cu, $anh_moi));
+        
+        $chienDich->update([
+            'danh_muc_id' => $request->danh_muc_id,
+            'ten_chien_dich' => $request->ten_chien_dich,
+            'mo_ta' => $request->mo_ta,
+            'hinh_anh' => $finalImages,
+
+            'muc_tieu_tien' => $request->muc_tieu_tien,
+            'ngay_ket_thuc' => $request->ngay_ket_thuc,
+
+            'vi_tri' => $request->vi_tri,
+            'lat' => $request->lat,
+            'lng' => $request->lng,
+        ]);
+
+        $images = array_map(function ($img) {
+            if (str_starts_with($img, 'http')) {
+                return $img;
+            }
+
+            return asset('storage/' . ltrim($img, '/'));
+        }, $finalImages);
+        $chienDich->hinh_anh = $images;
+
+        return response()->json([
+            'message' => 'Cập nhật chiến dịch thành công',
+            'data' => [
+                'id' => $chienDich->id,
+                'ten_chien_dich' => $chienDich->ten_chien_dich,
+                'mo_ta' => $chienDich->mo_ta,
+                'danh_muc_id' => $chienDich->danh_muc_id,
+
+                'muc_tieu_tien' => $chienDich->muc_tieu_tien,
+                'ngay_ket_thuc' => $chienDich->ngay_ket_thuc,
+
+                'vi_tri' => $chienDich->vi_tri,
+                'lat' => $chienDich->lat,
+                'lng' => $chienDich->lng,
+
+                'hinh_anh' => $images
+            ]
         ]);
     }
 
@@ -228,7 +417,15 @@ class CampaignController extends Controller
 
         $images = json_decode($chienDich->hinh_anh, true) ?? [];
 
-        $images = array_values(array_filter(array_map(fn($img) => $this->resolveMediaUrl($img), $images)));
+        $images = array_map(function ($img) {
+            if (str_starts_with($img, 'http')) {
+                return $img;
+            }
+
+            // nếu là path thì convert sang URL
+            return asset('storage/' . $img);
+
+        }, $images);
 
         $pageSize = 6;
 
@@ -254,6 +451,26 @@ class CampaignController extends Controller
         $soLuotUngHo = DB::table('ung_ho')
             ->where('chien_dich_gay_quy_id', $chienDich->id)
             ->count();
+
+        $expensesGrouped = $chienDich->chiTieus
+            ->groupBy('giao_dich_quy_id')
+            ->map(function ($items, $giaoDichId) {
+
+                $giaoDich = $items->first()->giaoDich;
+
+                return [
+                    'giao_dich_id' => $giaoDichId,
+                    'tong_tien_dot' => (float) optional($giaoDich)->so_tien,
+
+                    'chi_tieu' => $items->map(function ($item) {
+                        return [
+                            'ten' => $item->ten_hoat_dong,
+                            'mo_ta' => $item->mo_ta,
+                            'so_tien' => (float) $item->so_tien
+                        ];
+                    })->values()
+                ];
+            })->values();
 
         return response()->json([
             'id' => $chienDich->id,
@@ -281,7 +498,7 @@ class CampaignController extends Controller
             'to_chuc' => [
                 'id' => $chienDich->toChuc->id ?? null,
                 'ten_to_chuc' => $chienDich->toChuc->ten_to_chuc ?? null,
-                'logo' => $this->resolveMediaUrl($chienDich->toChuc->logo ?? null),
+                'logo' => $chienDich->toChuc->logo ? asset('storage/' . $chienDich->toChuc->logo) : null,
                 'mo_ta' => $chienDich->toChuc->mo_ta ?? null,
                 'dia_chi' => $chienDich->toChuc->dia_chi ?? null,
                 'email' => $chienDich->toChuc->email ?? null,
@@ -289,6 +506,8 @@ class CampaignController extends Controller
             ],
             'danh_sach_ung_ho' => $donations,
             'so_luot_ung_ho' => $soLuotUngHo,
+            
+            'chi_tieu_theo_dot' => $expensesGrouped
         ]);
     }
 
@@ -376,7 +595,7 @@ class CampaignController extends Controller
         return [
             'id' => $item->id,
             'ten_chien_dich' => $item->ten_chien_dich,
-            'hinh_anh' => $this->resolveMediaUrl($image),
+            'hinh_anh' => $image ? asset('storage/' . $image) : null,
             'so_tien_da_nhan' => $soTien,
             'muc_tieu_tien' => $mucTieu,
             'phan_tram' => $phanTram,
@@ -393,7 +612,7 @@ class CampaignController extends Controller
             ->select('id', 'ten_danh_muc', 'hinh_anh')
             ->get()
             ->map(function ($item) {
-                $item->hinh_anh = $this->resolveMediaUrl($item->hinh_anh);
+                $item->hinh_anh = asset('storage/' . $item->hinh_anh);
                 return $item;
             });
 
@@ -432,13 +651,108 @@ class CampaignController extends Controller
         );
     }
 
-    private function resolveMediaUrl(?string $value): ?string
+    //tạo hoạt động cho giao dịch rút
+    public function storeExpense(StoreExpenseRequest $request, $campaignId)
     {
-        if (!is_string($value) || trim($value) === '') {
-            return null;
+        $user = auth()->user();
+        $toChuc = $user->toChuc;
+
+        if (!$toChuc) {
+            return response()->json([
+                'message' => 'Bạn chưa phải tổ chức'
+            ], 403);
         }
 
-        $raw = trim($value);
-        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : asset('storage/' . ltrim($raw, '/'));
+        $chienDich = ChienDichGayQuy::where('id', $campaignId)
+            ->where('to_chuc_id', $toChuc->id)
+            ->firstOrFail();
+
+        $giaoDich = GiaoDichQuy::where('id', $request->giao_dich_quy_id)
+            ->where('chien_dich_gay_quy_id', $chienDich->id)
+            ->where('loai_giao_dich', 'RUT')
+            ->first();
+
+        if (!$giaoDich) {
+            return response()->json([
+                'message' => 'Giao dịch rút không hợp lệ'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $tongNhap = collect($request->chi_tiet)->sum('so_tien');
+
+            if ($tongNhap != $giaoDich->so_tien) {
+                return response()->json([
+                    'message' => 'Tổng chi phải bằng số tiền đã rút'
+                ], 400);
+            }
+
+            $data = [];
+
+            foreach ($request->chi_tiet as $item) {
+                $data[] = ChiTieuChienDich::create([
+                    'chien_dich_gay_quy_id' => $chienDich->id,
+                    'giao_dich_quy_id' => $giaoDich->id,
+                    'ten_hoat_dong' => $item['ten_hoat_dong'],
+                    'so_tien' => $item['so_tien'],
+                    'mo_ta' => $request->mo_ta
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Khai báo chi tiêu thành công',
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Có lỗi xảy ra'
+            ], 500);
+        }
+    }
+
+    //danh sách giải ngân của tổ chức đối với mỗi chiến dịch
+    public function getWithdrawTransactions($campaignId)
+    {
+        $chienDich = ChienDichGayQuy::find($campaignId);
+
+        if (!$chienDich) {
+            return response()->json([
+                'message' => 'Không tìm thấy chiến dịch'
+            ], 404);
+        }
+
+        $data = DB::table('giao_dich_quy as gd')
+            ->leftJoin('chi_tieu_chien_dich as ct', 'gd.id', '=', 'ct.giao_dich_quy_id')
+            ->where('gd.chien_dich_gay_quy_id', $campaignId)
+            ->where('gd.loai_giao_dich', 'RUT')
+
+            ->select(
+                'gd.id',
+                'gd.so_tien',
+                'gd.created_at',
+                'gd.mo_ta'
+            )
+            ->orderByDesc('gd.created_at')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'so_tien' => (float) $item->so_tien,
+                    'thoi_gian' => \Carbon\Carbon::parse($item->created_at)->format('d/m/Y H:i'),
+                    'mo_ta' => $item->mo_ta
+                ];
+            });
+
+        return response()->json([
+            'data' => $data
+        ]);
     }
 }

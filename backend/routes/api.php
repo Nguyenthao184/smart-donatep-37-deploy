@@ -128,6 +128,10 @@ Route::middleware('auth:sanctum')->group(function(){
         Route::get('/dashboard/monthly-statistics', [DashboardController::class, 'monthlyStatistics']);
         Route::get('/dashboard/active-campaigns', [DashboardController::class, 'activeCampaigns']);
         Route::get('/dashboard/recent-activities', [DashboardController::class, 'recentActivities']);
+
+        //hoạt động
+        Route::post('/campaigns/{id}/expenses', [CampaignController::class, 'storeExpense']);
+        Route::get('/campaigns/{id}/withdraw-transactions', [CampaignController::class, 'getWithdrawTransactions']);
         //Thống kê bài đăng
       
    });

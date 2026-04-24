@@ -54,11 +54,11 @@ class OrganizationController extends Controller
             ]);
 
             $org->giay_phep = $org->giay_phep 
-                ? $this->resolveMediaUrl($org->giay_phep) 
+                ? asset('storage/' . $org->giay_phep) 
                 : null;
 
             $org->logo = $org->logo 
-                ? $this->resolveMediaUrl($org->logo) 
+                ? asset('storage/' . $org->logo) 
                 : null;
 
             DB::commit();
@@ -295,7 +295,7 @@ class OrganizationController extends Controller
             return [
                 'id' => $org->id,
                 'ten_to_chuc' => $org->ten_to_chuc,
-                'logo' => $this->resolveMediaUrl($org->logo),
+                'logo' => $org->logo ? asset('storage/' . $org->logo) : null,
                 'dia_chi' => $org->dia_chi,
                 'tong_gay_quy' => (float) $org->tong_gay_quy,
                 'so_tai_khoan' => optional($org->taiKhoanGayQuy)->so_tai_khoan,
@@ -327,7 +327,7 @@ class OrganizationController extends Controller
                 $hinhAnh = null;
                 if ($cd->hinh_anh) {
                     $arr = json_decode($cd->hinh_anh, true);
-                    $hinhAnh = isset($arr[0]) ? $this->resolveMediaUrl($arr[0]) : null;
+                    $hinhAnh = isset($arr[0]) ? asset('storage/' . $arr[0]) : null;
                 }
 
                 // % hoàn thành
@@ -360,8 +360,6 @@ class OrganizationController extends Controller
                     'phan_tram' => $phanTram,
                     'trang_thai' => $cd->trang_thai,
                     'so_ngay_con_lai' => $soNgayConLai,
-
-                    // giống UI
                     'so_luot_ung_ho' => $soLuotUngHo,
                 ];
             });
@@ -391,11 +389,22 @@ class OrganizationController extends Controller
 
         $tk = $org->taiKhoanGayQuy;
 
+        $expenseSummary = DB::table('chi_tieu_chien_dich')
+            ->join('chien_dich_gay_quy', 'chi_tieu_chien_dich.chien_dich_gay_quy_id', '=', 'chien_dich_gay_quy.id')
+            ->where('chien_dich_gay_quy.to_chuc_id', $id)
+            ->select(
+                'ten_hoat_dong',
+                DB::raw('SUM(so_tien) as tong_tien')
+            )
+            ->groupBy('ten_hoat_dong')
+            ->orderByDesc('tong_tien')
+            ->get();
+
         return response()->json([
             // thông tin tổ chức
             'id' => $org->id,
             'ten_to_chuc' => $org->ten_to_chuc,
-            'logo' => $this->resolveMediaUrl($org->logo),
+            'logo' => $org->logo ? asset('storage/' . $org->logo) : null,
             'mo_ta' => $org->mo_ta,
             'dia_chi' => $org->dia_chi,
             'so_dien_thoai' => $org->so_dien_thoai,
@@ -409,7 +418,7 @@ class OrganizationController extends Controller
             'so_tai_khoan' => optional($tk)->so_tai_khoan,
             'so_du_hien_tai' => (float) optional($tk)->so_du ?? 0,
             'qr_code' => optional($tk)->qr_code 
-                ? $this->resolveMediaUrl($tk->qr_code) 
+                ? asset('storage/' . $tk->qr_code) 
                 : null,
 
             // thống kê (match UI)
@@ -417,6 +426,8 @@ class OrganizationController extends Controller
             'tong_chi' => (float) $tongChi,
             'tong_chien_dich' => $tongChienDich,
             'tong_luot_ung_ho' => $tongLuotUngHo,
+
+            'expense_summary' => $expenseSummary,
         ]);
     }
 
@@ -493,15 +504,5 @@ class OrganizationController extends Controller
         }
 
         return $str;
-    }
-
-    private function resolveMediaUrl(?string $value): ?string
-    {
-        if (!is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        $raw = trim($value);
-        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : asset('storage/' . ltrim($raw, '/'));
     }
 }
