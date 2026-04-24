@@ -266,7 +266,7 @@ class CampaignController extends Controller
             'danh_muc_id' => $request->danh_muc_id,
             'ten_chien_dich' => $request->ten_chien_dich,
             'mo_ta' => $request->mo_ta,
-            'hinh_anh' => $finalImages,
+            'hinh_anh' => json_encode($finalImages),
 
             'muc_tieu_tien' => $request->muc_tieu_tien,
             'ngay_ket_thuc' => $request->ngay_ket_thuc,
@@ -416,9 +416,12 @@ class CampaignController extends Controller
         ));
 
         $images = $chienDich->hinh_anh;
+
+        // nếu là string thì decode
         if (is_string($images)) {
             $images = json_decode($images, true);
         }
+
         $images = $images ?? [];
 
         $pageSize = 6;
@@ -576,11 +579,8 @@ class CampaignController extends Controller
 
         $ngayConLai = max(0, floor(now()->diffInDays($item->ngay_ket_thuc, false)));
 
-        $images = $item->hinh_anh;
-        if (is_string($images)) {
-            $images = json_decode($images, true);
-        }
-        $images = $images ?? [];
+        $images = json_decode($item->hinh_anh, true);
+        $image = $images[0] ?? null;
 
         $soTienConThieu = 0;
         if (
