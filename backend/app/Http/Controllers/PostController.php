@@ -14,6 +14,7 @@ use App\Services\GeocodingService;
 use App\Services\DanhMucSuggestionService;
 use App\Models\DanhMucBaiDang;
 use App\Models\ThichBaiDang;
+use App\Jobs\FindPostMatches;
 use App\Models\User;
 use App\Notifications\BaiDangDuocThichNotification;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
@@ -25,14 +26,24 @@ class PostController extends Controller
 
     public function index()
     {
-        $posts = BaiDang::query()
-            ->with(['nguoiDung'])
+        $latest = BaiDang::query()
+            ->with('nguoiDung')
+            ->where('created_at', '>=', now()->subMinutes(10))
             ->orderByDesc('created_at')
-            ->paginate(12);
+            ->limit(5)
+            ->get();
 
+        $random = BaiDang::query()
+            ->with('nguoiDung')
+            ->whereNotIn('id', $latest->pluck('id'))
+            ->inRandomOrder()
+            ->limit(20)
+            ->get();
+
+        $posts = $latest->concat($random);
         $currentUserId = Auth::id();
 
-        $posts->getCollection()->transform(function (BaiDang $post) use ($currentUserId) {
+        $posts = $posts->map(function (BaiDang $post) use ($currentUserId) {
 
             $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
                 ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
@@ -44,9 +55,7 @@ class PostController extends Controller
 
             $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
 
-            // 🔥 CHỈ MATCHES CHO BÀI CỦA CHÍNH USER
             if ($currentUserId && $post->nguoi_dung_id == $currentUserId) {
-
                 $post->matches = GhepNoiAi::where('bai_dang_nguon_id', $post->id)
                     ->with(['baiDangPhuHop.nguoiDung'])
                     ->orderByDesc('diem_phu_hop')
@@ -70,18 +79,24 @@ class PostController extends Controller
         ]);
     }
 
-    public function related(int $id)
+    public function related(int $id, AiMatchingService $aiMatchingService)
     {
         $user = Auth::user();
-
         if (!$user || !$user->lat || !$user->lng) {
-            return response()->json(['data' => []]);
+            return response()->json([
+                'data' => [],
+                'status' => 'empty'
+            ]);
         }
 
-        $source = BaiDang::findOrFail($id);
-
-        $lat = (float) $user->lat;
-        $lng = (float) $user->lng;
+        $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
+        if ($source->lat && $source->lng) {
+            $lat = (float) $source->lat;
+            $lng = (float) $source->lng;
+        } else {
+            $lat = (float) $user->lat;
+            $lng = (float) $user->lng;
+        }
 
         $distanceExpr = "(6371 * acos(
             cos(radians({$lat})) * cos(radians(bai_dang.lat)) *
@@ -89,89 +104,149 @@ class PostController extends Controller
             sin(radians({$lat})) * sin(radians(bai_dang.lat))
         ))";
 
-        $near = BaiDang::query()
+        $candidates = BaiDang::query()
             ->select('bai_dang.*')
             ->where('loai_bai', $source->loai_bai)
             ->where('id', '!=', $source->id)
+            ->where('nguoi_dung_id', '!=', $user->id)
+            ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
             ->whereNotNull('lat')
             ->whereNotNull('lng')
             ->whereRaw("$distanceExpr <= 15")
             ->addSelect(DB::raw("$distanceExpr as distance_km"))
             ->orderBy('distance_km', 'asc')
-            ->limit(8)
+            ->limit(40)
             ->get();
 
-        if ($near->isEmpty()) {
-            $near = BaiDang::query()
+        if ($candidates->isEmpty()) {
+            $candidates = BaiDang::query()
                 ->select('bai_dang.*')
                 ->where('loai_bai', $source->loai_bai)
                 ->where('id', '!=', $source->id)
+                ->where('nguoi_dung_id', '!=', $user->id)
+                ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
                 ->whereNotNull('lat')
                 ->whereNotNull('lng')
                 ->whereRaw("$distanceExpr <= 100")
                 ->addSelect(DB::raw("$distanceExpr as distance_km"))
                 ->orderBy('distance_km', 'asc')
-                ->limit(8)
+                ->limit(40)
                 ->get();
         }
 
-        if ($near->isEmpty()) {
-            $near = BaiDang::query()
-                ->select('bai_dang.*')
-                ->where('loai_bai', $source->loai_bai)
-                ->where('id', '!=', $source->id)
-                ->inRandomOrder()
-                ->limit(10)
-                ->get();
-        }
-
-        $posts = $near->values();
-
-
-
-
-
-        if ($posts->isEmpty()) {
-            return response()->json(['data' => []]);
-        }
-
-        $texts = $posts->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'noi_dung' => ($p->tieu_de ?? '') . ' ' . ($p->mo_ta ?? '')
-            ];
-        })->values();
-
-        $sourceText = ($source->tieu_de ?? '') . ' ' . ($source->mo_ta ?? '');
-
-        try {
-            $response = Http::timeout(3)->post(env('AI_SERVICE_URL') . '/semantic-matches', [
-                'noi_dung' => $sourceText,
-                'candidates' => $texts,
-                'top_k' => 10,
-                'min_score' => 0.3
+        if ($candidates->isEmpty()) {
+            return response()->json([
+                'data' => [],
+                'status' => 'empty'
             ]);
+        }
 
-            if ($response->ok()) {
-                $results = $response->json();
+        $sourceText = $this->normalizeVietnameseText(($source->tieu_de ?? '') . ' ' . ($source->mo_ta ?? ''));
+        $sourceFoodTokens = $this->extractFoodTokens($sourceText);
+        if (!empty($sourceFoodTokens)) {
+            $candidates = $candidates->filter(function (BaiDang $cand) use ($sourceFoodTokens) {
+                $candText = $this->normalizeVietnameseText(($cand->tieu_de ?? '') . ' ' . ($cand->mo_ta ?? ''));
+                $candFoodTokens = $this->extractFoodTokens($candText);
+                if (empty($candFoodTokens)) {
+                    return false;
+                }
+                return !empty(array_intersect($sourceFoodTokens, $candFoodTokens));
+            })->values();
+        }
 
-                $ids = collect($results)->pluck('id')->toArray();
+        if ($candidates->isEmpty()) {
+            return response()->json([
+                'data' => [],
+                'status' => 'empty'
+            ]);
+        }
 
-                $posts = $posts
-                    ->whereIn('id', $ids)
-                    ->sortBy(function ($p) use ($ids) {
-                        return array_search($p->id, $ids);
-                    })
-                    ->values();
-            } else {
-                $posts = $posts->shuffle()->take(10)->values();
+        $allPosts = collect([$source])->concat($candidates);
+        $danhMucMap = $this->loadDanhMucMap($allPosts->pluck('id')->all());
+
+        $postsPayload = [$this->toAiPost($source, $danhMucMap)];
+        foreach ($candidates as $cand) {
+            $postsPayload[] = $this->toAiPost($cand, $danhMucMap);
+        }
+
+        if (count($postsPayload) < 2) {
+            return response()->json([
+                'data' => [],
+                'status' => 'empty'
+            ]);
+        }
+
+        $userHasAddress = !empty($user->dia_chi);
+        $userInterests = $userHasAddress ? [] : $this->calculateUserInterests((int) $user->id);
+
+        $payload = [
+            'post_id' => $source->id,
+            'posts' => $postsPayload,
+            'user_has_address' => $userHasAddress,
+            'user_interests' => $userInterests,    
+            'location_source' => ($source->lat && $source->lng) ? 'post' : 'user',
+        ];
+
+        $matches = $aiMatchingService->match($payload);
+        $matchedIds = collect($matches)->pluck('post_id')->all();
+        $matchedPosts = BaiDang::with(['nguoiDung'])->whereIn('id', $matchedIds)->get()->keyBy('id');
+
+        $responseData = [];
+        foreach ($matches as $item) {
+            $post = $matchedPosts->get((int) $item['post_id']);
+            if (!$post) {
+                continue;
             }
-        } catch (\Exception $e) {
-            $posts = $posts->shuffle()->take(10)->values();
+
+            $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
+                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                : null;
+            $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
+            $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
+            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
+            $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
+            unset($post->nguoiDung);
+
+            $reasonCodes = is_array($item['reasons'] ?? null) ? $item['reasons'] : [];
+            $reasonMapVi = [
+                'category_gate' => 'Cùng danh mục nên được ưu tiên',
+                'intent_gate' => 'Cùng nhóm nhu cầu (ý định) nên được ưu tiên',
+                'geo_ok' => 'Có thể tính khoảng cách theo vị trí',
+                'geo_unknown' => 'Không đủ dữ liệu vị trí để tính khoảng cách',
+                'interest_match' => 'Phù hợp với mối quan tâm của bạn',
+            ];
+            $reasonsVi = [];
+            foreach ($reasonCodes as $code) {
+                $reasonsVi[] = $reasonMapVi[$code] ?? (string) $code;
+            }
+
+            $responseData[] = [
+                'post' => $post,
+                'score' => (float) $item['score'],
+                'distance_km' => array_key_exists('distance', $item) && $item['distance'] !== null
+                    ? (float) $item['distance']
+                    : null,
+                'match_percent' => (float) $item['match_percent'],
+                'reasons' => $reasonsVi,
+                'reason_codes' => $reasonCodes,
+                'breakdown' => $item['breakdown'] ?? null,
+            ];
+        }
+
+        $filtered = array_values(array_filter($responseData, static function (array $row): bool {
+            return (float) ($row['match_percent'] ?? 0) >= 60.0;
+        }));
+        if (count($filtered) < 3) {
+            $filtered = array_values(array_filter($responseData, static function (array $row): bool {
+                return (float) ($row['match_percent'] ?? 0) >= 50.0;
+            }));
+        }
+        if ($filtered === []) {
+            $filtered = $responseData;
         }
 
         return response()->json([
-            'data' => $posts->take(10)
+            'data' => array_slice($filtered, 0, 10),
         ]);
     }
 
@@ -355,9 +430,7 @@ class PostController extends Controller
         $data['hinh_anh'] = $hinhAnhPaths === [] ? null : $hinhAnhPaths;
 
         $post = BaiDang::create($data);
-        $aiService = app(\App\Services\AiMatchingService::class);
-
-        
+     
         $gService = app(DanhMucSuggestionService::class);
         $suggestions = $gService->suggest($post->tieu_de, $post->mo_ta);
         DanhMucBaiDang::where('bai_dang_id', $post->id)->delete();
@@ -369,7 +442,6 @@ class PostController extends Controller
                 'confidence' => (float)$s['confidence'],
             ]);
         }
-
         $post->load('nguoiDung');
         $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
             ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
@@ -378,6 +450,7 @@ class PostController extends Controller
         $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
         $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
         unset($post->nguoiDung);
+        FindPostMatches::dispatchSync($post->id);
 
         $danhMucGoiY = DanhMucBaiDang::where('bai_dang_id', $post->id)
             ->orderByDesc('is_primary')
@@ -525,6 +598,7 @@ class PostController extends Controller
             ->orderByDesc('confidence')
             ->get(['danh_muc_code', 'is_primary', 'confidence']);
 
+        FindPostMatches::dispatchSync($post->id);
         return response()->json([
             'message' => 'Cập nhật bài đăng thành công',
             'data' => $post,
@@ -653,7 +727,12 @@ class PostController extends Controller
         }
 
         $matches = $aiMatchingService->match($payload);
-
+        if (empty($matches)) {
+            return response()->json([
+                'data' => [],
+                'status' => 'no_match'
+            ]);
+        }
         $matchedIds = collect($matches)->pluck('post_id')->all();
         $matchedPosts = BaiDang::with(['nguoiDung'])->whereIn('id', $matchedIds)->get()->keyBy('id');
 
@@ -689,7 +768,6 @@ class PostController extends Controller
             $responseData[] = [
                 'post' => $post,
                 'score' => (float)$item['score'],
-                // distance có thể null nếu bài thiếu lat/lng (AI service sẽ fallback theo nội dung)
                 'distance_km' => array_key_exists('distance', $item) && $item['distance'] !== null
                     ? (float)$item['distance']
                     : null,
@@ -713,6 +791,7 @@ class PostController extends Controller
 
         return response()->json([
             'data' => $responseData,
+            'status' => empty($responseData) ? 'no_match' : 'ok'
         ]);
     }
 
@@ -840,6 +919,105 @@ class PostController extends Controller
         return is_string($value) && preg_match('/^https?:\/\//i', trim($value)) === 1;
     }
 
+    private function normalizeVietnameseText(string $value): string
+    {
+        $text = mb_strtolower(trim($value), 'UTF-8');
+        $map = [
+            'à' => 'a',
+            'á' => 'a',
+            'ạ' => 'a',
+            'ả' => 'a',
+            'ã' => 'a',
+            'â' => 'a',
+            'ầ' => 'a',
+            'ấ' => 'a',
+            'ậ' => 'a',
+            'ẩ' => 'a',
+            'ẫ' => 'a',
+            'ă' => 'a',
+            'ằ' => 'a',
+            'ắ' => 'a',
+            'ặ' => 'a',
+            'ẳ' => 'a',
+            'ẵ' => 'a',
+            'è' => 'e',
+            'é' => 'e',
+            'ẹ' => 'e',
+            'ẻ' => 'e',
+            'ẽ' => 'e',
+            'ê' => 'e',
+            'ề' => 'e',
+            'ế' => 'e',
+            'ệ' => 'e',
+            'ể' => 'e',
+            'ễ' => 'e',
+            'ì' => 'i',
+            'í' => 'i',
+            'ị' => 'i',
+            'ỉ' => 'i',
+            'ĩ' => 'i',
+            'ò' => 'o',
+            'ó' => 'o',
+            'ọ' => 'o',
+            'ỏ' => 'o',
+            'õ' => 'o',
+            'ô' => 'o',
+            'ồ' => 'o',
+            'ố' => 'o',
+            'ộ' => 'o',
+            'ổ' => 'o',
+            'ỗ' => 'o',
+            'ơ' => 'o',
+            'ờ' => 'o',
+            'ớ' => 'o',
+            'ợ' => 'o',
+            'ở' => 'o',
+            'ỡ' => 'o',
+            'ù' => 'u',
+            'ú' => 'u',
+            'ụ' => 'u',
+            'ủ' => 'u',
+            'ũ' => 'u',
+            'ư' => 'u',
+            'ừ' => 'u',
+            'ứ' => 'u',
+            'ự' => 'u',
+            'ử' => 'u',
+            'ữ' => 'u',
+            'ỳ' => 'y',
+            'ý' => 'y',
+            'ỵ' => 'y',
+            'ỷ' => 'y',
+            'ỹ' => 'y',
+            'đ' => 'd',
+        ];
+        $text = strtr($text, $map);
+        $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text) ?? $text;
+        return preg_replace('/\s+/u', ' ', $text) ?? $text;
+    }
+
+    private function extractFoodTokens(string $text): array
+    {
+        $tokenMap = [
+            'sua' => [' sua ', ' sua_', ' _sua', 'sua bot', 'sua tuoi'],
+            'gao' => [' gao ', 'gao '],
+            'mi' => [' mi ', 'mi tom', 'my tom'],
+        ];
+
+        $haystack = ' ' . $text . ' ';
+        $hits = [];
+        foreach ($tokenMap as $token => $keywords) {
+            foreach ($keywords as $kw) {
+                if (str_contains($haystack, $kw)) {
+                    $hits[] = $token;
+                    break;
+                }
+            }
+        }
+
+        return array_values(array_unique($hits));
+    }
+
     private function applyPostLikeAggregates($query): void
     {
         $query->withCount([
@@ -877,8 +1055,8 @@ class PostController extends Controller
         $rows = [];
 
         // Expand từ 3x3 thành 5x5 grid (±0.02) để không miss bài gần nhưng vượt khỏi boundary
-        foreach ([-2*$step, -$step, 0.0, $step, 2*$step] as $dLat) {
-            foreach ([-2*$step, -$step, 0.0, $step, 2*$step] as $dLng) {
+        foreach ([-2 * $step, -$step, 0.0, $step, 2 * $step] as $dLat) {
+            foreach ([-2 * $step, -$step, 0.0, $step, 2 * $step] as $dLng) {
                 if ($dLat == 0.0 && $dLng == 0.0) {
                     continue;
                 }
@@ -932,16 +1110,17 @@ class PostController extends Controller
             ->orderByDesc('created_at');
 
         if ($keyword !== '') {
+            $words = array_values(array_filter(preg_split('/\s+/', $keyword), function ($word) {
+                return $word !== null && trim($word) !== '';
+            }));
 
-            $words = preg_split('/\s+/', $keyword);
-
-            $query->where(function ($q) use ($words) {
+            $query->where(function ($q) use ($words, $keyword) {
+                $q->whereRaw("tieu_de COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$keyword}%"])
+                    ->orWhereRaw("mo_ta COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$keyword}%"]);
 
                 foreach ($words as $word) {
-                    $q->where(function ($sub) use ($word) {
-                        $sub->whereRaw("tieu_de COLLATE utf8mb4_bin LIKE ?", ["%{$word}%"])
-                            ->orWhereRaw("mo_ta COLLATE utf8mb4_bin LIKE ?", ["%{$word}%"]);
-                    });
+                    $q->orWhereRaw("tieu_de COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$word}%"])
+                        ->orWhereRaw("mo_ta COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$word}%"]);
                 }
             });
 
