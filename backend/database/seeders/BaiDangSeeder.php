@@ -36,14 +36,8 @@ class BaiDangSeeder extends Seeder
             ['dia_diem' => 'Hải Châu', 'lat' => 16.0471, 'lng' => 108.2068],
             ['dia_diem' => 'Hải Châu - Nguyễn Văn Linh', 'lat' => 16.0545, 'lng' => 108.2022],
 
-            ['dia_diem' => 'Sơn Trà', 'lat' => 16.0720, 'lng' => 108.2470],
-            ['dia_diem' => 'Sơn Trà - Võ Nguyên Giáp', 'lat' => 16.0800, 'lng' => 108.2500],
-
             ['dia_diem' => 'Ngũ Hành Sơn', 'lat' => 16.0000, 'lng' => 108.2700],
             ['dia_diem' => 'Ngũ Hành Sơn - Le Van Hien', 'lat' => 15.9900, 'lng' => 108.2600],
-
-            ['dia_diem' => 'Liên Chiểu', 'lat' => 16.1200, 'lng' => 108.1300],
-            ['dia_diem' => 'Liên Chiểu - Nguyễn Tất Thành', 'lat' => 16.1100, 'lng' => 108.1500],
 
             ['dia_diem' => 'Cẩm Lệ', 'lat' => 16.0200, 'lng' => 108.2000],
             ['dia_diem' => 'Thanh Khê', 'lat' => 16.0600, 'lng' => 108.1900],

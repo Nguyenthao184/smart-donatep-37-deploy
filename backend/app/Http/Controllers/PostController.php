@@ -94,8 +94,22 @@ class PostController extends Controller
             $lat = (float) $source->lat;
             $lng = (float) $source->lng;
         } else {
-            $lat = (float) $user->lat;
-            $lng = (float) $user->lng;
+            $latestViewerPost = BaiDang::query()
+                ->where('nguoi_dung_id', $user->id)
+                ->whereNotNull('lat')
+                ->whereNotNull('lng')
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($latestViewerPost) {
+                $lat = (float) $latestViewerPost->lat;
+                $lng = (float) $latestViewerPost->lng;
+                $locationSource = 'viewer_post';
+            } else {
+                $lat = (float) $user->lat;
+                $lng = (float) $user->lng;
+                $locationSource = 'user';
+            }
         }
 
         $distanceExpr = "(6371 * acos(
@@ -184,7 +198,7 @@ class PostController extends Controller
             'posts' => $postsPayload,
             'user_has_address' => $userHasAddress,
             'user_interests' => $userInterests,
-            'location_source' => ($source->lat && $source->lng) ? 'post' : 'user',
+            'location_source' => $locationSource,
         ];
 
         $matches = $aiMatchingService->match($payload);
@@ -450,7 +464,11 @@ class PostController extends Controller
         $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
         $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
         unset($post->nguoiDung);
-        FindPostMatches::dispatchSync($post->id);
+
+        $aiService = app(AiMatchingService::class);
+        $realtimeMatches = $this->buildRealtimeMatchesPayload($post, (int) $userId, $aiService);
+
+        FindPostMatches::dispatch((int) $post->id)->delay(now()->addSeconds(2));
 
         $danhMucGoiY = DanhMucBaiDang::where('bai_dang_id', $post->id)
             ->orderByDesc('is_primary')
@@ -461,6 +479,8 @@ class PostController extends Controller
             'message' => 'Tạo bài đăng thành công',
             'data' => $post,
             'danh_muc_goi_y' => $danhMucGoiY,
+            'matches' => $realtimeMatches,
+            'matches_source' => $realtimeMatches === [] ? 'none' : 'ai',
         ], 201);
     }
 
@@ -598,7 +618,7 @@ class PostController extends Controller
             ->orderByDesc('confidence')
             ->get(['danh_muc_code', 'is_primary', 'confidence']);
 
-        FindPostMatches::dispatchSync($post->id);
+        FindPostMatches::dispatch((int) $post->id)->delay(now()->addSeconds(2));
         return response()->json([
             'message' => 'Cập nhật bài đăng thành công',
             'data' => $post,
@@ -635,78 +655,133 @@ class PostController extends Controller
 
 
     public function matches(int $id, AiMatchingService $aiMatchingService)
+{
+    $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
+
+    $userId = (int) Auth::id();
+    if ((int) $source->nguoi_dung_id !== $userId) {
+        return response()->json([
+            'message' => 'Chỉ chủ bài đăng mới được phép xem matches.'
+        ], 403);
+    }
+
+    $user = User::findOrFail($userId);
+    $userHasAddress = !empty($user->dia_chi);
+
+    $userInterests = [];
+    if (!$userHasAddress) {
+        $userInterests = $this->calculateUserInterests($userId);
+    }
+
+    $candidates = $this->buildCandidates($source);
+
+    if ($candidates->isEmpty()) {
+        return response()->json([
+            'data' => [],
+            'status' => 'no_candidate'
+        ]);
+    }
+
+    $matches = $this->runAiMatching($source, $candidates, $userHasAddress, $userInterests, $aiMatchingService);
+
+    if (!empty($matches)) {
+
+        $responseData = $this->mapAiMatchesToResponse($source, $matches, true);
+
+        return response()->json([
+            'data' => $responseData,
+            'source' => 'ai'
+        ]);
+    }
+
+    $existingMatches = GhepNoiAi::where('bai_dang_nguon_id', $id)
+        ->with(['baiDangPhuHop.nguoiDung'])
+        ->orderByDesc('diem_phu_hop')
+        ->limit(10)
+        ->get();
+
+    if ($existingMatches->isNotEmpty()) {
+
+        $responseData = $existingMatches->map(function ($m) {
+
+            $post = $m->baiDangPhuHop;
+
+            $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
+                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                : null;
+
+            $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
+            $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
+            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
+
+            return [
+                'post' => $post,
+                'score' => (float)$m->diem_phu_hop,
+                'match_percent' => round(min(100, max(0, ($m->diem_phu_hop / 10) * 100)), 2),
+            ];
+        });
+
+        return response()->json([
+            'data' => $responseData,
+            'source' => 'db_fallback'
+        ]);
+    }
+
+    return response()->json([
+        'data' => [],
+        'status' => 'no_match'
+    ]);
+}
+
+    private function buildCandidates(BaiDang $source)
     {
-        $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
-
-        // Get authenticated user - required by middleware
-        $userId = (int) Auth::id();
-        if ((int) $source->nguoi_dung_id !== $userId) {
-            return response()->json([
-                'message' => 'Chỉ chủ bài đăng mới được phép xem matches.'
-            ], 403);
-        }
-        $user = User::findOrFail($userId);
-
-        $userHasAddress = !empty($user->dia_chi);
-
-        $userInterests = [];
-        if (!$userHasAddress) {
-            $userInterests = $this->calculateUserInterests($userId);
-        }
-
         $targetLoaiBai = $source->loai_bai === 'CHO' ? 'NHAN' : 'CHO';
-        $maxRadiusKm = 20.0;
-        $candidatePrelimit = 120;
-        $aiInputLimit = 40;
-
-        $candidatesQuery = BaiDang::query()
+        $query = BaiDang::query()
             ->with(['nguoiDung'])
             ->select('bai_dang.*')
             ->where('loai_bai', $targetLoaiBai)
-            // Du lieu thuc te co the lech status (vd: CHO + CON_NHAN).
             ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
             ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id);
 
         if (!empty($source->region)) {
             $nearRegions = $this->neighborRegions($source->region);
             $regions = array_values(array_unique(array_filter(array_merge([$source->region], $nearRegions))));
-            $candidatesQuery->whereIn('region', $regions);
+            $query->whereIn('region', $regions);
         }
 
         if ($source->lat !== null && $source->lng !== null) {
-            $distanceExpr = "(6371 * acos( cos(radians(?)) * cos(radians(bai_dang.lat)) * cos(radians(bai_dang.lng) - radians(?)) + sin(radians(?)) * sin(radians(bai_dang.lat)) ))";
-            $candidatesQuery->whereNotNull('bai_dang.lat')
+            $distanceExpr = "(6371 * acos(
+                cos(radians(" . (float) $source->lat . ")) * cos(radians(bai_dang.lat)) *
+                cos(radians(bai_dang.lng) - radians(" . (float) $source->lng . ")) +
+                sin(radians(" . (float) $source->lat . ")) * sin(radians(bai_dang.lat))
+            ))";
+            $query->whereNotNull('bai_dang.lat')
                 ->whereNotNull('bai_dang.lng')
-                ->whereRaw("$distanceExpr <= ?", [
-                    $source->lat,
-                    $source->lng,
-                    $source->lat,
-                    $maxRadiusKm
-                ]);
-            $distanceExprSelect = "(6371 * acos( cos(radians(" . (float)$source->lat . ")) * cos(radians(bai_dang.lat)) * cos(radians(bai_dang.lng) - radians(" . (float)$source->lng . ")) + sin(radians(" . (float)$source->lat . ")) * sin(radians(bai_dang.lat)) ))";
-            $candidatesQuery->addSelect(DB::raw($distanceExprSelect . " as distance_km"))
+                ->whereRaw("$distanceExpr <= 20")
+                ->addSelect(DB::raw("$distanceExpr as distance_km"))
                 ->orderBy('distance_km', 'asc');
         } else {
-            $candidatesQuery->orderByDesc('created_at');
+            $query->latest();
         }
 
-        $candidates = $candidatesQuery
-            ->limit($candidatePrelimit)
-            ->get();
+        return $query->limit(40)->get();
+    }
 
-        if ($source->lat !== null && $source->lng !== null) {
-            $candidates = $candidates->sortBy('distance_km')->take($aiInputLimit)->values();
-        } else {
-            $candidates = $candidates->take($aiInputLimit)->values();
-        }
-
-        $postsPayload = [];
+    private function runAiMatching(
+        BaiDang $source,
+        $candidates,
+        bool $userHasAddress,
+        array $userInterests,
+        AiMatchingService $aiMatchingService
+    ): array {
         $allPosts = collect([$source])->concat($candidates);
         $danhMucMap = $this->loadDanhMucMap($allPosts->pluck('id')->all());
-
-        $postsPayload[] = $this->toAiPost($source, $danhMucMap);
+        $postsPayload = [$this->toAiPost($source, $danhMucMap)];
         foreach ($candidates as $cand) {
             $postsPayload[] = $this->toAiPost($cand, $danhMucMap);
+        }
+        if (count($postsPayload) < 2) {
+            return [];
         }
 
         $payload = [
@@ -716,54 +791,20 @@ class PostController extends Controller
             'user_interests' => $userInterests,
         ];
 
-        if (count($postsPayload) < 2) {
-            return response()->json([
-                'data' => [],
-            ]);
-        }
-        $existingMatches = GhepNoiAi::where('bai_dang_nguon_id', $id)
-        ->with(['baiDangPhuHop.nguoiDung'])
-        ->orderByDesc('diem_phu_hop')
-        ->limit(10)
-        ->get();
-        if ($existingMatches->isNotEmpty()) {
-            $responseData = $existingMatches->map(function ($m) {
-        
-                $post = $m->baiDangPhuHop;
-        
-                $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-                    ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
-                    : null;
-        
-                $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-                $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
-                $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
-        
-                return [
-                    'post' => $post,
-                    'score' => (float) $m->diem_phu_hop,
-                    'match_percent' => round(min(100, max(0, ((float) $m->diem_phu_hop / 10) * 100)), 2),
-                ];
-            });
-        
-            return response()->json([
-                'data' => $responseData
-            ]);
-        }
-        $matches = $aiMatchingService->match($payload);
-       
-        if (empty($matches)) {
-            return response()->json([
-                'data' => [],
-                'status' => 'no_match'
-            ]);
-        }
+        return $aiMatchingService->match($payload);
+    }
+
+    private function mapAiMatchesToResponse(BaiDang $source, array $matches, bool $persist = false): array
+    {
         $matchedIds = collect($matches)->pluck('post_id')->all();
-        $matchedPosts = BaiDang::with(['nguoiDung'])->whereIn('id', $matchedIds)->get()->keyBy('id');
+        $matchedPosts = BaiDang::with(['nguoiDung'])
+            ->whereIn('id', $matchedIds)
+            ->get()
+            ->keyBy('id');
 
         $responseData = [];
         foreach ($matches as $item) {
-            $post = $matchedPosts->get((int)$item['post_id']);
+            $post = $matchedPosts->get((int) $item['post_id']);
             if (!$post) {
                 continue;
             }
@@ -773,51 +814,60 @@ class PostController extends Controller
                 : null;
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
             $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
-            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
-
+            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
             $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
             unset($post->nguoiDung);
 
-            $reasonCodes = is_array($item['reasons'] ?? null) ? $item['reasons'] : [];
-            $reasonMapVi = [
-                'category_gate' => 'Cùng danh mục nên được ưu tiên',
-                'intent_gate' => 'Cùng nhóm nhu cầu (ý định) nên được ưu tiên',
-                'geo_ok' => 'Có thể tính khoảng cách theo vị trí',
-                'geo_unknown' => 'Không đủ dữ liệu vị trí để tính khoảng cách',
-            ];
-            $reasonsVi = [];
-            foreach ($reasonCodes as $code) {
-                $reasonsVi[] = $reasonMapVi[$code] ?? (string)$code;
-            }
-
             $responseData[] = [
                 'post' => $post,
-                'score' => (float)$item['score'],
+                'score' => (float) ($item['score'] ?? 0),
                 'distance_km' => array_key_exists('distance', $item) && $item['distance'] !== null
-                    ? (float)$item['distance']
+                    ? (float) $item['distance']
                     : null,
-                'match_percent' => (float)$item['match_percent'],
-                'reasons' => $reasonsVi,
-                'reason_codes' => $reasonCodes,
+                'match_percent' => (float) ($item['match_percent'] ?? 0),
+                'reasons' => $item['reasons'] ?? [],
                 'breakdown' => $item['breakdown'] ?? null,
             ];
 
-            GhepNoiAi::updateOrCreate(
-                [
-                    'bai_dang_nguon_id' => $source->id,
-                    'bai_dang_phu_hop_id' => $post->id,
-                ],
-                [
-                    'diem_phu_hop' => (float)$item['score'],
-                    'trang_thai' => 'GHEP_NOI',
-                ]
-            );
+            if ($persist) {
+                GhepNoiAi::updateOrCreate(
+                    [
+                        'bai_dang_nguon_id' => $source->id,
+                        'bai_dang_phu_hop_id' => $post->id,
+                    ],
+                    [
+                        'diem_phu_hop' => (float) ($item['score'] ?? 0),
+                        'trang_thai' => 'GHEP_NOI',
+                    ]
+                );
+            }
         }
 
-        return response()->json([
-            'data' => $responseData,
-            'status' => empty($responseData) ? 'no_match' : 'ok'
-        ]);
+        return $responseData;
+    }
+
+    private function buildRealtimeMatchesPayload(BaiDang $post, int $userId, AiMatchingService $aiMatchingService): array
+    {
+        $source = BaiDang::with(['nguoiDung'])->find($post->id);
+        if (!$source) {
+            return [];
+        }
+
+        $user = User::find($userId);
+        $userHasAddress = !empty($user?->dia_chi);
+        $userInterests = $userHasAddress ? [] : $this->calculateUserInterests($userId);
+
+        $candidates = $this->buildCandidates($source);
+        if ($candidates->isEmpty()) {
+            return [];
+        }
+
+        $matches = $this->runAiMatching($source, $candidates, $userHasAddress, $userInterests, $aiMatchingService);
+        if (empty($matches)) {
+            return [];
+        }
+
+        return $this->mapAiMatchesToResponse($source, $matches, false);
     }
 
     private function toAiPost(BaiDang $post, array $danhMucMap = []): array
