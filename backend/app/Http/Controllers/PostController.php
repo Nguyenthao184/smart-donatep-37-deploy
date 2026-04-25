@@ -20,6 +20,8 @@ use App\Notifications\BaiDangDuocThichNotification;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
 
 class PostController extends Controller
 {
@@ -45,12 +47,12 @@ class PostController extends Controller
             });
         }
         $query->orderByRaw('
-    CASE 
-        WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 1000
-        WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 100
-        ELSE 0
-    END DESC
-')
+            CASE 
+                WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 1000
+                WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 100
+                ELSE 0
+            END DESC
+            ')
             ->orderByRaw('RAND()');
         $posts = $query->paginate($perPage);
         $currentUserId = Auth::id();
@@ -82,102 +84,81 @@ class PostController extends Controller
     public function related(int $id, AiMatchingService $aiMatchingService)
     {
         $user = Auth::user();
-        if (!$user || !$user->lat || !$user->lng) {
+
+        if (!$user) {
+
             return response()->json([
                 'data' => [],
                 'status' => 'empty'
+
             ]);
         }
-
+        
         $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
-        $locationSource = 'unknown';
-        $latestViewerPost = BaiDang::query()
+        $userLatestPost = BaiDang::query()
             ->where('nguoi_dung_id', $user->id)
             ->whereNotNull('lat')
             ->whereNotNull('lng')
             ->orderByDesc('created_at')
             ->first();
+        $locationLat = null;
+        $locationLng = null;
+        $locationSource = null;
 
-        if ($latestViewerPost) {
-            $lat = (float) $latestViewerPost->lat;
-            $lng = (float) $latestViewerPost->lng;
-            $locationSource = 'viewer_post';
-        } else {
-            $lat = (float) $user->lat;
-            $lng = (float) $user->lng;
+        if ($userLatestPost) {
+            $locationLat = $userLatestPost->lat;
+            $locationLng = $userLatestPost->lng;
+            $locationSource = 'post_user';
+        }
+        elseif (!empty($user->lat) && !empty($user->lng)) {
+            $locationLat = $user->lat;
+            $locationLng = $user->lng;
             $locationSource = 'user';
         }
+        else {
+            return response()->json([
+                'data' => [],
+                'status' => 'no_address'
+            ]);
+        }
 
-        $distanceExpr = "(6371 * acos(
-            cos(radians({$lat})) * cos(radians(bai_dang.lat)) *
-            cos(radians(bai_dang.lng) - radians({$lng})) +
-            sin(radians({$lat})) * sin(radians(bai_dang.lat))
-        ))";
-
-        $candidates = BaiDang::query()
+        $candidatesQuery = BaiDang::query()
+            ->with(['nguoiDung'])
             ->select('bai_dang.*')
             ->where('loai_bai', $source->loai_bai)
             ->where('id', '!=', $source->id)
             ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id)
             ->where('nguoi_dung_id', '!=', $user->id)
-            ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
-            ->whereNotNull('lat')
-            ->whereNotNull('lng')
-            ->whereRaw("$distanceExpr <= 15")
-            ->addSelect(DB::raw("$distanceExpr as distance_km"))
-            ->orderBy('distance_km', 'asc')
-            ->limit(40)
-            ->get();
+            ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG']);
 
-        if ($candidates->isEmpty()) {
-            $candidates = BaiDang::query()
-                ->select('bai_dang.*')
-                ->where('loai_bai', $source->loai_bai)
-                ->where('id', '!=', $source->id)
-                ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id)
-                ->where('nguoi_dung_id', '!=', $user->id)
-                ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
-                ->whereNotNull('lat')
-                ->whereNotNull('lng')
-                ->whereRaw("$distanceExpr <= 100")
+        if ($locationLat && $locationLng) {
+            $distanceExpr = "(6371 * acos(
+        cos(radians($locationLat)) * cos(radians(bai_dang.lat)) *
+        cos(radians(bai_dang.lng) - radians($locationLng)) +
+        sin(radians($locationLat)) * sin(radians(bai_dang.lat))
+    ))";
+
+
+            $candidatesQuery
+                ->whereNotNull('bai_dang.lat')
+                ->whereNotNull('bai_dang.lng')
+                ->whereRaw("$distanceExpr <= 20")
                 ->addSelect(DB::raw("$distanceExpr as distance_km"))
-                ->orderBy('distance_km', 'asc')
-                ->limit(40)
-                ->get();
+                ->orderBy('distance_km', 'asc');
+        } else {
+            $candidatesQuery->orderByDesc('created_at');
         }
-
-        if ($candidates->isEmpty()) {
-            $candidates = BaiDang::query()
-                ->select('bai_dang.*')
-                ->where('loai_bai', $source->loai_bai)
-                ->where('id', '!=', $source->id)
-                ->where('nguoi_dung_id', '!=', $source->nguoi_dung_id)
-                ->whereNotIn('trang_thai', ['DA_NHAN', 'DA_TANG'])
-                ->inRandomOrder()
-                ->limit(40)
-                ->get();
-        }
-
-        $sourceText = $this->normalizeVietnameseText(($source->tieu_de ?? '') . ' ' . ($source->mo_ta ?? ''));
-        $sourceFoodTokens = $this->extractFoodTokens($sourceText);
-        if (!empty($sourceFoodTokens)) {
-            $candidates = $candidates->filter(function (BaiDang $cand) use ($sourceFoodTokens) {
-                $candText = $this->normalizeVietnameseText(($cand->tieu_de ?? '') . ' ' . ($cand->mo_ta ?? ''));
-                $candFoodTokens = $this->extractFoodTokens($candText);
-                if (empty($candFoodTokens)) {
-                    return false;
-                }
-                return !empty(array_intersect($sourceFoodTokens, $candFoodTokens));
-            })->values();
-        }
-
+        
+        $candidates = $candidatesQuery
+            ->limit(100)
+            ->get();
         if ($candidates->isEmpty()) {
             return response()->json([
                 'data' => [],
                 'status' => 'empty'
             ]);
         }
-
+        
         $allPosts = collect([$source])->concat($candidates);
         $danhMucMap = $this->loadDanhMucMap($allPosts->pluck('id')->all());
 
@@ -193,18 +174,41 @@ class PostController extends Controller
             ]);
         }
 
-        $userHasAddress = !empty($user->dia_chi);
-        $userInterests = $userHasAddress ? [] : $this->calculateUserInterests((int) $user->id);
-
         $payload = [
             'post_id' => $source->id,
             'posts' => $postsPayload,
-            'user_has_address' => $userHasAddress,
-            'user_interests' => $userInterests,
-            'location_source' => $locationSource,
+            'user_has_address' => true,  
+            'user_interests' => [],
+            'mode' => 'related',  
         ];
 
-        $matches = $aiMatchingService->match($payload);
+        try {
+            $matches = $aiMatchingService->match($payload, 'related'); 
+
+            Log::info('Related: AI service called', [
+                'post_id' => $source->id,
+                'endpoint' => 'related',
+                'candidates_sent' => count($postsPayload) - 1,
+                'matches_received' => count($matches),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Related: AI service error', [
+                'post_id' => $source->id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'data' => [],
+                'status' => 'ai_error'
+            ]);
+        }
+
+        if (empty($matches)) {
+            return response()->json([
+                'data' => [],
+                'status' => 'no_match'
+            ]);
+        }
+
         $matchedIds = collect($matches)->pluck('post_id')->all();
         $matchedPosts = BaiDang::with(['nguoiDung'])->whereIn('id', $matchedIds)->get()->keyBy('id');
 
@@ -226,25 +230,19 @@ class PostController extends Controller
 
             $reasonCodes = is_array($item['reasons'] ?? null) ? $item['reasons'] : [];
             $reasonMapVi = [
-                'category_gate' => 'Cùng danh mục nên được ưu tiên',
-                'intent_gate' => 'Cùng nhóm nhu cầu (ý định) nên được ưu tiên',
-                'geo_ok' => 'Có thể tính khoảng cách theo vị trí',
-                'geo_unknown' => 'Không đủ dữ liệu vị trí để tính khoảng cách',
-                'interest_match' => 'Phù hợp với mối quan tâm của bạn',
+                'semantic_match' => 'Nội dung liên quan',
+                'category_gate' => 'Cùng danh mục',
+                'intent_gate' => 'Cùng nhóm nhu cầu',
             ];
             $reasonsVi = [];
             foreach ($reasonCodes as $code) {
                 $reasonsVi[] = $reasonMapVi[$code] ?? (string) $code;
             }
-            $post->dia_diem = $user->dia_chi ?? $post->dia_diem;
-            $post->display_location_source = $locationSource;
+
             $responseData[] = [
                 'post' => $post,
-                
                 'score' => (float) $item['score'],
-                'distance_km' => array_key_exists('distance', $item) && $item['distance'] !== null
-                    ? (float) $item['distance']
-                    : null,
+                'distance_km' => null, 
                 'match_percent' => (float) $item['match_percent'],
                 'reasons' => $reasonsVi,
                 'reason_codes' => $reasonCodes,
@@ -253,22 +251,18 @@ class PostController extends Controller
         }
 
         $filtered = array_values(array_filter($responseData, static function (array $row): bool {
-            return (float) ($row['match_percent'] ?? 0) >= 60.0;
+            return (float) ($row['match_percent'] ?? 0) >= 50.0;
         }));
-        if (count($filtered) < 3) {
-            $filtered = array_values(array_filter($responseData, static function (array $row): bool {
-                return (float) ($row['match_percent'] ?? 0) >= 50.0;
-            }));
-        }
+
         if ($filtered === []) {
             $filtered = $responseData;
         }
 
         return response()->json([
             'data' => array_slice($filtered, 0, 10),
+            'location_source' => $locationSource
         ]);
     }
-
     public function show(int $id)
     {
         $query = BaiDang::query()->with(['nguoiDung']);
@@ -794,6 +788,7 @@ class PostController extends Controller
             'posts' => $postsPayload,
             'user_has_address' => $userHasAddress,
             'user_interests' => $userInterests,
+            'mode' => 'matches'
         ];
 
         return $aiMatchingService->match($payload);
