@@ -452,12 +452,11 @@ class CampaignController extends Controller
             ->where('chien_dich_gay_quy_id', $chienDich->id)
             ->count();
 
-        $expensesGrouped = collect($chienDich->chiTieus ?? [])
+        $expensesGrouped = $chienDich->chiTieus
             ->groupBy('giao_dich_quy_id')
             ->map(function ($items, $giaoDichId) {
 
-                $first = $items->first();
-                $giaoDich = optional($first)->giaoDich;
+                $giaoDich = $items->first()->giaoDich;
 
                 return [
                     'giao_dich_id' => $giaoDichId,
