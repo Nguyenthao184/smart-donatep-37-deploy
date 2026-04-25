@@ -93,7 +93,7 @@ class PostController extends Controller
 
             ]);
         }
-        
+
         $source = BaiDang::with(['nguoiDung'])->findOrFail($id);
         $userLatestPost = BaiDang::query()
             ->where('nguoi_dung_id', $user->id)
@@ -109,13 +109,11 @@ class PostController extends Controller
             $locationLat = $userLatestPost->lat;
             $locationLng = $userLatestPost->lng;
             $locationSource = 'post_user';
-        }
-        elseif (!empty($user->lat) && !empty($user->lng)) {
+        } elseif (!empty($user->lat) && !empty($user->lng)) {
             $locationLat = $user->lat;
             $locationLng = $user->lng;
             $locationSource = 'user';
-        }
-        else {
+        } else {
             return response()->json([
                 'data' => [],
                 'status' => 'no_address'
@@ -148,7 +146,7 @@ class PostController extends Controller
         } else {
             $candidatesQuery->orderByDesc('created_at');
         }
-        
+
         $candidates = $candidatesQuery
             ->limit(100)
             ->get();
@@ -158,7 +156,7 @@ class PostController extends Controller
                 'status' => 'empty'
             ]);
         }
-        
+
         $allPosts = collect([$source])->concat($candidates);
         $danhMucMap = $this->loadDanhMucMap($allPosts->pluck('id')->all());
 
@@ -177,13 +175,13 @@ class PostController extends Controller
         $payload = [
             'post_id' => $source->id,
             'posts' => $postsPayload,
-            'user_has_address' => true,  
+            'user_has_address' => true,
             'user_interests' => [],
-            'mode' => 'related',  
+            'mode' => 'related',
         ];
 
         try {
-            $matches = $aiMatchingService->match($payload, 'related'); 
+            $matches = $aiMatchingService->match($payload, 'related');
 
             Log::info('Related: AI service called', [
                 'post_id' => $source->id,
@@ -242,7 +240,7 @@ class PostController extends Controller
             $responseData[] = [
                 'post' => $post,
                 'score' => (float) $item['score'],
-                'distance_km' => null, 
+                'distance_km' => null,
                 'match_percent' => (float) $item['match_percent'],
                 'reasons' => $reasonsVi,
                 'reason_codes' => $reasonCodes,
@@ -1175,64 +1173,40 @@ class PostController extends Controller
     public function search(Request $request)
     {
         $keyword = trim((string) $request->query('q', ''));
+        $type = $request->query('type', 'post');
         $loaiBai = strtoupper((string) $request->query('loai_bai', ''));
         $perPage = (int) $request->query('per_page', 10);
-
         $perPage = max(1, min($perPage, 50));
+        if (!$keyword) {
+            return response()->json(['data' => []]);
+        }
+        if ($type === 'people') {
+            $users = User::query()
+                ->whereRaw("ho_ten COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$keyword}%"])
+                ->limit(20)
+                ->get();
 
+            return response()->json([
+                'type' => 'people',
+                'data' => $users
+            ]);
+        }
         $query = BaiDang::query()
             ->with(['nguoiDung'])
-            ->orderByDesc('created_at');
-
-        if ($keyword !== '') {
-            $words = array_values(array_filter(preg_split('/\s+/', $keyword), function ($word) {
-                return $word !== null && trim($word) !== '';
-            }));
-
-            $query->where(function ($q) use ($words, $keyword) {
-                $q->whereRaw("tieu_de COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$keyword}%"])
-                    ->orWhereRaw("mo_ta COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$keyword}%"]);
-
-                foreach ($words as $word) {
-                    $q->orWhereRaw("tieu_de COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$word}%"])
-                        ->orWhereRaw("mo_ta COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$word}%"]);
-                }
-            });
-
-            $query->orderByRaw("
-                    (tieu_de LIKE ?) DESC,
-                    (mo_ta LIKE ?) DESC
-                ", ["%{$keyword}%", "%{$keyword}%"]);
-        }
-
-        $query->orderByDesc('created_at');
-
+            ->whereNotIn('trang_thai', ['DA_TANG', 'DA_NHAN']);
         if (in_array($loaiBai, ['CHO', 'NHAN'])) {
             $query->where('loai_bai', $loaiBai);
         }
 
-        $query->whereNotIn('trang_thai', ['DA_TANG', 'DA_NHAN']);
-
-        $posts = $query->paginate($perPage);
-
-        $posts->getCollection()->transform(function (BaiDang $post) {
-
-            $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
-                : null;
-
-            $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
-            $post->hinh_anh_urls = array_map(fn($p) => $this->resolveMediaUrl($p), $paths);
-            $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null;
-
-            $post->nguoi_dung_ten = $post->nguoiDung?->ho_ten;
-
-            unset($post->nguoiDung);
-
-            return $post;
+        $query->where(function ($q) use ($keyword) {
+            $q->whereRaw("tieu_de COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$keyword}%"])
+                ->orWhereRaw("mo_ta COLLATE utf8mb4_unicode_ci LIKE ?", ["%{$keyword}%"]);
         });
-
+        $posts = $query->latest()
+            ->paginate($perPage)
+            ->appends($request->query());
         return response()->json([
+            'type' => 'post',
             'data' => $posts
         ]);
     }
