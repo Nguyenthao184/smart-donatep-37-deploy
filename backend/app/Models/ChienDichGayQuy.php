@@ -51,4 +51,9 @@ class ChienDichGayQuy extends Model
     {
         return $this->hasMany(UngHo::class, 'chien_dich_gay_quy_id');
     }
+
+    public function chiTieus()
+    {
+        return $this->hasMany(ChiTieuChienDich::class, 'chien_dich_gay_quy_id');
+    }
 }

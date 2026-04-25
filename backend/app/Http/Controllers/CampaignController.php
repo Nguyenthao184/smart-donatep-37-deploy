@@ -398,7 +398,7 @@ class CampaignController extends Controller
     //chi tiết chiến dịch
     public function show($id)
     {
-        $chienDich = ChienDichGayQuy::with(['toChuc', 'danhMuc'])
+        $chienDich = ChienDichGayQuy::with(['toChuc', 'danhMuc', 'chiTieus.giaoDich'])
             ->find($id);
 
         if (!$chienDich) {
@@ -452,11 +452,12 @@ class CampaignController extends Controller
             ->where('chien_dich_gay_quy_id', $chienDich->id)
             ->count();
 
-        $expensesGrouped = $chienDich->chiTieus
+        $expensesGrouped = collect($chienDich->chiTieus ?? [])
             ->groupBy('giao_dich_quy_id')
             ->map(function ($items, $giaoDichId) {
 
-                $giaoDich = $items->first()->giaoDich;
+                $first = $items->first();
+                $giaoDich = optional($first)->giaoDich;
 
                 return [
                     'giao_dich_id' => $giaoDichId,
