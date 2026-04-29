@@ -129,19 +129,22 @@ class UngHoSeeder extends Seeder
             }
 
             if ($campaign->trang_thai === 'HOAN_THANH' && $tong < $campaign->muc_tieu_tien) {
+
                 $conThieu = $campaign->muc_tieu_tien - $tong;
 
                 $rows[] = [
-                    'nguoi_dung_id' => $user->id,
+                    'nguoi_dung_id' => $users->random()->id,
                     'chien_dich_gay_quy_id' => $campaign->id,
-                    'so_tien' => $soTien,
-                    'phuong_thuc_thanh_toan' => $method,
+                    'so_tien' => $conThieu, 
+                    'phuong_thuc_thanh_toan' => rand(0,1) ? 'vnpay' : 'momo',
                     'trang_thai' => 'THANH_CONG',
                     'payment_ref' => Str::uuid(),
                     'gateway_transaction_id' => rand(10000000, 99999999),
-                    'created_at' => $createdAt,
+                    'created_at' => now(),
                     'updated_at' => now(),
                 ];
+
+                $tong += $conThieu; 
             }
 
             collect($rows)->chunk(500)->each(function ($chunk) {
