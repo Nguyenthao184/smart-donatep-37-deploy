@@ -187,7 +187,7 @@ class DashboardController extends Controller
                 'gd.mo_ta'
             )
             ->orderByDesc('gd.created_at')
-            ->limit(10)
+            ->limit(20)
             ->get();
 
         $result = $data->map(function ($item) {
@@ -227,5 +227,44 @@ class DashboardController extends Controller
             'tong_do_da_tang' => $tongDoDaTang,
             'so_nguoi_duoc_tang' => $soNguoiDuocHoTro,
         ]);
+    }
+
+    //các chiến dịch khác
+    public function otherCampaigns()
+    {
+        $orgId = auth()->user()->toChuc->id;
+
+        $data = DB::table('chien_dich_gay_quy')
+            ->where('to_chuc_id', $orgId)
+            ->where('trang_thai', '!=', 'HOAT_DONG')
+            ->select(
+                'id',
+                'ten_chien_dich',
+                'muc_tieu_tien',
+                'so_tien_da_nhan',
+                'ngay_ket_thuc',
+                'trang_thai'
+            )
+            ->get();
+
+        $result = $data->map(function ($item) {
+            $percent = $item->muc_tieu_tien > 0
+                ? round(($item->so_tien_da_nhan / $item->muc_tieu_tien) * 100)
+                : 0;
+
+            $ngayConLai = max(0, floor(now()->diffInDays($item->ngay_ket_thuc, false)));
+
+            return [
+                'id' => $item->id,
+                'ten_chien_dich' => $item->ten_chien_dich,
+                'so_tien_da_nhan' => (float)$item->so_tien_da_nhan,
+                'muc_tieu_tien' => (float)$item->muc_tieu_tien,
+                'phan_tram' => $percent,
+                'so_ngay_con_lai' => $ngayConLai,
+                'trang_thai' => $item->trang_thai,
+            ];
+        });
+
+        return response()->json($result);
     }
 }

@@ -34,7 +34,7 @@ class NguoiDungSeeder extends Seeder
 
         // tạo data bằng factory (KHÔNG insert)
         $users = User::factory()
-            ->count(30)
+            ->count(100)
             ->make()
             ->toArray();
 

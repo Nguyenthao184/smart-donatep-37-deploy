@@ -96,40 +96,24 @@ Route::middleware('auth:sanctum')->group(function(){
 
        
     });
-
-    Route::middleware('role:NGUOI_DUNG')->group(function(){
-        //ttcn
-        Route::get('/user/profile',[UserProfileController::class,'getProfile']);
-        Route::post('/user/profile',[UserProfileController::class,'updateProfile']);
-        Route::post('/user/change-password',[UserProfileController::class,'changePassword']);
-        Route::post('/user/update-diachi',[UserProfileController::class,'updateDiaChi']);
-
-        //xem profile người dùng khác
-        Route::get('/profile/{id}', [UserProfileController::class, 'show']);
-
-        //đăng ký tổ chức
-        Route::post('/organization/register', [OrganizationController::class, 'register']);
-        Route::get('/organization/status', [OrganizationController::class, 'status']);
-
-        //ủng hộ
-        Route::post('/donate', [DonateController::class, 'donate']);
-        Route::get('/donate/{id}', [DonateController::class, 'getDonateDetail']);
-        Route::get('/donate/history', [DonateController::class, 'donateHistory']);
-    });
     
     Route::middleware(['role:TO_CHUC','update.campaign'])->group(function(){
         //chiến dịch
         Route::post('/campaigns', [CampaignController::class, 'store']);
         Route::get('/campaigns/me', [CampaignController::class, 'myCampaigns']);
+        Route::get('/campaigns/update/{id}', [CampaignController::class, 'edit']);
+        Route::post('/campaigns/update/{id}', [CampaignController::class, 'update']);
 
         //thống kê
         Route::get('/dashboard', [DashboardController::class, 'index']);
         Route::get('/dashboard/financial-summary', [DashboardController::class, 'financialSummary']);
         Route::get('/dashboard/monthly-statistics', [DashboardController::class, 'monthlyStatistics']);
         Route::get('/dashboard/active-campaigns', [DashboardController::class, 'activeCampaigns']);
+        Route::get('/campaigns/others', [DashboardController::class, 'otherCampaigns']);
         Route::get('/dashboard/recent-activities', [DashboardController::class, 'recentActivities']);
 
         //hoạt động
+        Route::get('/campaigns/{id}/withdraw-expenses', [CampaignController::class, 'getWithdrawWithExpenses']);
         Route::post('/campaigns/{id}/expenses', [CampaignController::class, 'storeExpense']);
         Route::get('/campaigns/{id}/withdraw-transactions', [CampaignController::class, 'getWithdrawTransactions']);
         //Thống kê bài đăng
@@ -160,7 +144,20 @@ Route::middleware('auth:sanctum')->group(function(){
             Route::post('/{id}/da-xem', [TroChuyenController::class, 'danhDauDaXem']);
         });
        
-       
+        //ttcn
+        Route::get('/user/profile',[UserProfileController::class,'getProfile']);
+        Route::post('/user/profile',[UserProfileController::class,'updateProfile']);
+        Route::post('/user/change-password',[UserProfileController::class,'changePassword']);
+        Route::post('/user/update-diachi',[UserProfileController::class,'updateDiaChi']);
+
+        //đăng ký tổ chức
+        Route::post('/organization/register', [OrganizationController::class, 'register']);
+        Route::get('/organization/status', [OrganizationController::class, 'status']);
+
+        //ủng hộ
+        Route::post('/donate', [DonateController::class, 'donate']);
+        Route::get('/donate/{id}', [DonateController::class, 'getDonateDetail']);
+        Route::get('/donate/history', [DonateController::class, 'donateHistory']);
     });
 });
 Route::post('/upload-image', [PostController::class, 'uploadImage']);
@@ -178,3 +175,6 @@ Route::middleware('update.campaign')->group(function () {
 });
 
 Route::post('/momo/ipn', [DonateController::class, 'momoIpn']);
+
+//xem profile người dùng khác
+Route::get('/profile/{id}', [UserProfileController::class, 'show']);
