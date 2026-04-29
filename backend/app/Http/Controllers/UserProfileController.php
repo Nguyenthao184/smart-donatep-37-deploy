@@ -184,7 +184,7 @@ class UserProfileController extends Controller
     public function show($id)
     {
         // 1. Người dùng
-        $user = User::select('ho_ten', 'ten_tai_khoan', 'anh_dai_dien')
+        $user = User::select('id','ho_ten', 'ten_tai_khoan', 'anh_dai_dien', 'created_at')
             ->findOrFail($id);
 
         if ($user->anh_dai_dien) {
@@ -219,6 +219,12 @@ class UserProfileController extends Controller
         }
 
         // 3. Bài đăng
+        $query = BaiDang::where('nguoi_dung_id', $id)
+            ->with(['nguoiDung'])
+            ->latest();
+
+        $this->applyPostLikeAggregates($query);
+
         $baiDang = $query->get()->map(function (BaiDang $post) {
             // xử lý ảnh (string hoặc array)
             if (is_array($post->hinh_anh)) {
