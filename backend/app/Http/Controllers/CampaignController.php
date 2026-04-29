@@ -431,6 +431,7 @@ class CampaignController extends Controller
 
         $donations = DB::table('ung_ho as uh')
             ->leftJoin('nguoi_dung as nd', 'uh.nguoi_dung_id', '=', 'nd.id')
+            ->where('uh.trang_thai', 'THANH_CONG')
             ->select(
                 'uh.so_tien',
                 'uh.created_at',
@@ -450,6 +451,7 @@ class CampaignController extends Controller
         
         $soLuotUngHo = DB::table('ung_ho')
             ->where('chien_dich_gay_quy_id', $chienDich->id)
+            ->where('trang_thai', 'THANH_CONG')
             ->count();
 
         $expensesGrouped = collect($chienDich->chiTieus ?? [])
