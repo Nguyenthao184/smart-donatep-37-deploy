@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\XacMinhToChuc;
 use App\Models\TaiKhoanGayQuy;
 use App\Models\ToChuc;
+use App\Models\VaiTro;
 use App\Http\Requests\Organization\OrganizationRegisterRequest;
 use Illuminate\Support\Facades\DB;
 use App\Notifications\ApprovalNotification;
@@ -102,11 +103,26 @@ class OrganizationController extends Controller
                 'duyet_luc' => now()
             ]);
 
-            // nâng quyền user thành tổ chức
-            DB::table('nguoi_dung_vai_tro')->updateOrInsert([
-                'nguoi_dung_id' => $org->nguoi_dung_id,
-                'vai_tro_id' => 3, 
-            ]);
+            // chuyển quyền user sang tổ chức bằng tên role (tránh hard-code id)
+            $toChucRoleId = VaiTro::where('ten_vai_tro', 'TO_CHUC')->value('id');
+            $nguoiDungRoleId = VaiTro::where('ten_vai_tro', 'NGUOI_DUNG')->value('id');
+
+            if (!$toChucRoleId || !$nguoiDungRoleId) {
+                throw new \RuntimeException('Thiếu cấu hình vai trò TO_CHUC/NGUOI_DUNG');
+            }
+
+            DB::table('nguoi_dung_vai_tro')->updateOrInsert(
+                [
+                    'nguoi_dung_id' => $org->nguoi_dung_id,
+                    'vai_tro_id' => $toChucRoleId,
+                ],
+                []
+            );
+
+            DB::table('nguoi_dung_vai_tro')
+                ->where('nguoi_dung_id', $org->nguoi_dung_id)
+                ->where('vai_tro_id', $nguoiDungRoleId)
+                ->delete();
 
             $toChuc = ToChuc::updateOrCreate(
                 ['nguoi_dung_id' => $org->nguoi_dung_id],
@@ -148,7 +164,8 @@ class OrganizationController extends Controller
 
                 $fileName = 'qr_' . time() . '_' . Str::random(5) . '.png';
 
-                Storage::disk('public')->put($fileName, $result->getString());
+                $path = 'qr_code/' . $fileName;
+                Storage::disk('public')->put($path, $result->getString());
 
                 // tạo tài khoản gây quỹ
                 TaiKhoanGayQuy::create([
@@ -160,7 +177,7 @@ class OrganizationController extends Controller
                     'ma_yeu_cau_mb' => $mb['request_id'],
                     'so_du' => 0,
                     'trang_thai' => 'HOAT_DONG',
-                    'qr_code' => 'storage/' . $fileName
+                    'qr_code' => $path
                 ]);
             }
 

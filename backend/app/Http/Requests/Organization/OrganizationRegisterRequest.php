@@ -4,6 +4,7 @@ namespace App\Http\Requests\Organization;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\VaiTro;
 
 class OrganizationRegisterRequest extends FormRequest
 {
@@ -95,10 +96,13 @@ class OrganizationRegisterRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             // Không cho đăng ký nhiều lần
-            $isToChuc = \DB::table('nguoi_dung_vai_tro')
-                ->where('nguoi_dung_id', auth()->id())
-                ->where('vai_tro_id', 3)
-                ->exists();
+            $toChucRoleId = VaiTro::where('ten_vai_tro', 'TO_CHUC')->value('id');
+            $isToChuc = $toChucRoleId
+                ? \DB::table('nguoi_dung_vai_tro')
+                    ->where('nguoi_dung_id', auth()->id())
+                    ->where('vai_tro_id', $toChucRoleId)
+                    ->exists()
+                : false;
 
             if ($isToChuc) {
                 $validator->errors()->add('ten_to_chuc', 'Bạn đã là tổ chức từ thiện, không thể đăng ký lại');

@@ -24,14 +24,6 @@ class NguoiDungVaiTroSeeder extends Seeder
                 continue;
             }
 
-            // MẶC ĐỊNH USER
-            DB::table('nguoi_dung_vai_tro')->insert([
-                'nguoi_dung_id' => $user->id,
-                'vai_tro_id' => 2
-            ]);
-
-
-            // NẾU CÓ TỔ CHỨC → THÊM ROLE TỔ CHỨC
             $hasOrg = DB::table('to_chuc')
                 ->where('nguoi_dung_id', $user->id)
                 ->exists();
@@ -40,6 +32,11 @@ class NguoiDungVaiTroSeeder extends Seeder
                 DB::table('nguoi_dung_vai_tro')->insert([
                     'nguoi_dung_id' => $user->id,
                     'vai_tro_id' => 3
+                ]);
+            } else{
+                DB::table('nguoi_dung_vai_tro')->insert([
+                    'nguoi_dung_id' => $user->id,
+                    'vai_tro_id' => 2
                 ]);
             }
         }
