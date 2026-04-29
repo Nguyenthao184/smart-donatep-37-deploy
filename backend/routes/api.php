@@ -156,8 +156,8 @@ Route::middleware('auth:sanctum')->group(function(){
 
         //ủng hộ
         Route::post('/donate', [DonateController::class, 'donate']);
-        Route::get('/donate/{id}', [DonateController::class, 'getDonateDetail']);
         Route::get('/donate/history', [DonateController::class, 'donateHistory']);
+        Route::get('/donate/{id}', [DonateController::class, 'getDonateDetail']);
     });
 });
 Route::post('/upload-image', [PostController::class, 'uploadImage']);

@@ -27,6 +27,7 @@ class UserProfileController extends Controller
 
         $tongTienUngHo = DB::table('ung_ho')
             ->where('nguoi_dung_id', $user->id)
+            ->where('trang_thai', 'THANH_CONG')
             ->sum('so_tien');
         
         $user = $user->fresh()->load('toChuc');
