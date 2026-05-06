@@ -26,6 +26,41 @@ use Illuminate\Support\Facades\Log;
 
 class PostController extends Controller
 {
+    /**
+     * Upload image to Cloudinary when available; fallback to local public storage.
+     *
+     * @return string|null Absolute URL (cloudinary) OR relative storage path (local)
+     */
+    private function uploadPostImageOrFallback($file): ?string
+    {
+        if (!$file || !$file->isValid()) {
+            return null;
+        }
+
+        try {
+            $uploaded = Cloudinary::uploadApi()->upload($file->getRealPath(), [
+                'folder' => 'posts',
+            ]);
+
+            if (is_array($uploaded) && !empty($uploaded['secure_url'])) {
+                return (string) $uploaded['secure_url'];
+            }
+        } catch (\Throwable $e) {
+            // Fallback to local storage; keep post creation resilient on misconfigured Cloudinary.
+            Log::warning('Cloudinary upload failed; fallback to local storage', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            return $file->store('posts', 'public');
+        } catch (\Throwable $e) {
+            Log::error('Local storage fallback failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
 
     public function index(Request $request)
     {
@@ -429,13 +464,9 @@ class PostController extends Controller
         if ($files) {
             $files = is_array($files) ? $files : [$files];
             foreach ($files as $f) {
-                if ($f && $f->isValid()) {
-                    $uploaded = Cloudinary::uploadApi()->upload($f->getRealPath(), [
-                        'folder' => 'posts'
-                    ]);
-                    if ($uploaded) {
-                        $hinhAnhPaths[] = $uploaded['secure_url'];
-                    }
+                $pathOrUrl = $this->uploadPostImageOrFallback($f);
+                if (is_string($pathOrUrl) && $pathOrUrl !== '') {
+                    $hinhAnhPaths[] = $pathOrUrl;
                 }
             }
         }
@@ -578,13 +609,9 @@ class PostController extends Controller
         if ($files) {
             $files = is_array($files) ? $files : [$files];
             foreach ($files as $f) {
-                if ($f && $f->isValid()) {
-                    $uploaded = Cloudinary::uploadApi()->upload($f->getRealPath(), [
-                        'folder' => 'posts'
-                    ]);
-                    if ($uploaded) {
-                        $newPaths[] = $uploaded['secure_url'];
-                    }
+                $pathOrUrl = $this->uploadPostImageOrFallback($f);
+                if (is_string($pathOrUrl) && $pathOrUrl !== '') {
+                    $newPaths[] = $pathOrUrl;
                 }
             }
         }
@@ -1163,13 +1190,9 @@ class PostController extends Controller
 
             foreach ($files as $file) {
 
-                if ($file && $file->isValid()) {
-
-                    $uploaded = Cloudinary::uploadApi()->upload($file->getRealPath(), [
-                        'folder' => 'posts'
-                    ]);
-
-                    $urls[] = $uploaded['secure_url'] ?? null;
+                $pathOrUrl = $this->uploadPostImageOrFallback($file);
+                if (is_string($pathOrUrl) && $pathOrUrl !== '') {
+                    $urls[] = $this->resolveMediaUrl($pathOrUrl);
                 }
             }
         }
