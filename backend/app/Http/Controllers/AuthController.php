@@ -331,6 +331,6 @@ class AuthController extends Controller
         }
 
         $raw = trim($value);
-        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : asset('storage/' . ltrim($raw, '/'));
+        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : secure_asset('storage/' . ltrim($raw, '/'));
     }
 }

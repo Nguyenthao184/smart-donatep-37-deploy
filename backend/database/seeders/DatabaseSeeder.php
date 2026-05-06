@@ -38,6 +38,7 @@ class DatabaseSeeder extends Seeder
             ChienDichGayQuySeeder::class,
             UngHoSeeder::class,
             GiaoDichQuySeeder::class,
+            CampaignFraudDemoSeeder::class,
             ChiTieuChienDichSeeder::class,
             NguoiDungVaiTroSeeder::class,
             DanhMucBaiDangSeeder::class,

@@ -6,8 +6,13 @@ use App\Http\Requests\Fraud\FraudAutoCheckRequest;
 use App\Http\Requests\Fraud\FraudCampaignAutoCheckRequest;
 use App\Http\Requests\Fraud\UpdateFraudAlertRequest;
 use App\Models\CanhBaoGianLan;
+use App\Models\BaiDang;
 use App\Models\User;
+use App\Models\ChienDichGayQuy;
+use App\Notifications\AdminViolationDetectedNotification;
+use App\Notifications\ApprovalNotification;
 use App\Services\CampaignFraudFeatureService;
+use App\Services\AlertAggregationService;
 use App\Services\FraudCheckService;
 use App\Services\FraudFeatureService;
 use Illuminate\Http\Request;
@@ -124,7 +129,7 @@ class FraudController extends Controller
         }
 
         $duLieuRuiRoAi = $fraudCheckService->checkCampaigns($payloadAi);
-        $bangAi = collect($duLieuRuiRoAi)->keyBy(fn (array $dong) => (int) ($dong['campaign_id'] ?? -1));
+        $bangAi = collect($duLieuRuiRoAi)->keyBy(fn(array $dong) => (int) ($dong['campaign_id'] ?? -1));
 
         $ketQua = collect($dacTrung)->map(function (array $muc) use ($bangAi) {
             $idChienDich = (int) $muc['campaign_id'];
@@ -158,7 +163,7 @@ class FraudController extends Controller
 
     /**
      * GET /api/admin/fraud-alerts
-     * Query: risk=HIGH|LOW, trang_thai=CHO_XU_LY|DA_KIEM_TRA|CANH_BAO_SAI, user_id=1, limit=20
+     * Query: risk=HIGH|LOW, trang_thai=CHO_XU_LY|DA_XU_LY, user_id=1, limit=20
      */
     public function getAlerts(Request $request)
     {
@@ -169,15 +174,19 @@ class FraudController extends Controller
         $gioiHan = max(1, min($gioiHan, 100));
 
         $truyVan = CanhBaoGianLan::query()->orderByDesc('created_at');
-        if (in_array($mucRuiRoLoc, ['HIGH', 'LOW'], true)) {
-            if ($mucRuiRoLoc === 'HIGH') {
+        if (in_array($mucRuiRoLoc, ['HIGH', 'MEDIUM', 'LOW'], true)) {
+            if (Schema::hasColumn('canh_bao_gian_lan', 'muc_rui_ro')) {
+                $truyVan->where('muc_rui_ro', $mucRuiRoLoc);
+            } elseif ($mucRuiRoLoc === 'HIGH') {
                 $truyVan->where('diem_rui_ro', '>=', 70);
+            } elseif ($mucRuiRoLoc === 'MEDIUM') {
+                $truyVan->whereBetween('diem_rui_ro', [40, 69.99]);
             } else {
-                $truyVan->where('diem_rui_ro', '<', 70);
+                $truyVan->where('diem_rui_ro', '<', 40);
             }
         }
 
-        $cacTrangThaiHopLe = ['CHO_XU_LY', 'DA_KIEM_TRA', 'CANH_BAO_SAI'];
+        $cacTrangThaiHopLe = ['CHO_XU_LY', 'DA_XU_LY'];
         if ($trangThaiLoc !== '' && in_array($trangThaiLoc, $cacTrangThaiHopLe, true)) {
             $truyVan->where('trang_thai', $trangThaiLoc);
         }
@@ -192,17 +201,79 @@ class FraudController extends Controller
         $danhSachCanhBao = $truyVan->limit($gioiHan)->get()->map(function (CanhBaoGianLan $canhBao) {
             $moTa = trim((string)($canhBao->mo_ta ?? ''));
             $danhSachLyDo = $moTa === '' ? [] : array_values(array_filter(array_map('trim', explode(' | ', $moTa))));
+            $targetType = strtolower((string) ($canhBao->target_type ?? ''));
+            $targetId = (int) ($canhBao->target_id ?? 0);
+            if ($targetType === '' || $targetId <= 0) {
+                $targetType = $canhBao->chien_dich_id ? 'campaign' : 'user';
+                $targetId = $canhBao->chien_dich_id ? (int) $canhBao->chien_dich_id : (int) $canhBao->nguoi_dung_id;
+            }
+            $score = round((float) $canhBao->diem_rui_ro, 2);
+            $risk = (string) ($canhBao->muc_rui_ro ?? ($score >= 70 ? 'HIGH' : ($score >= 40 ? 'MEDIUM' : 'LOW')));
+            $post = null;
+            $campaign = null;
+
+            if (strtolower($targetType) === 'post') {
+                $post = BaiDang::where('id', $targetId)->first();
+            }
+
+            if (strtolower($targetType) === 'campaign') {
+                $campaign = DB::table('chien_dich_gay_quy as cd')
+                    ->leftJoin('to_chuc as tc', 'tc.id', '=', 'cd.to_chuc_id')
+                    ->where('cd.id', $targetId)
+                    ->select(
+                        'cd.id',
+                        'cd.ten_chien_dich',
+                        'cd.hinh_anh',
+
+                        'tc.ten_to_chuc'
+                    )
+                    ->first();
+            }
 
             return [
                 'id' => (int)$canhBao->id,
+                'report_id' => $canhBao->details['report_id'] ?? null,
+                'source' => strtoupper((string) ($canhBao->source ?? 'AI')),
+                'type' => $targetType,
+                'target' => $targetType . ' #' . $targetId,
+
+                'target_type' => $targetType,
+                'target_id' => $targetId,
+
                 'user_id' => (int)$canhBao->nguoi_dung_id,
                 'chien_dich_id' => $canhBao->chien_dich_id ? (int)$canhBao->chien_dich_id : null,
+
                 'loai_gian_lan' => $canhBao->loai_gian_lan,
+                'loai_canh_bao' => $canhBao->loai_canh_bao ?? $canhBao->loai_gian_lan,
+
                 'trang_thai' => $canhBao->trang_thai,
-                'muc_rui_ro' => ((float)$canhBao->diem_rui_ro >= 70.0) ? 'HIGH' : 'LOW',
-                'diem_rui_ro' => round((float)$canhBao->diem_rui_ro, 2),
-                'ly_do' => $danhSachLyDo,
+                'decision' => $canhBao->decision ?? $canhBao->trang_thai,
+
+                'admin_id' => $canhBao->admin_id ? (int) $canhBao->admin_id : null,
+                'admin_note' => $canhBao->admin_note,
+                'reviewed_at' => $canhBao->reviewed_at?->toIso8601String(),
+
+                'muc_rui_ro' => $risk,
+                'diem_rui_ro' => $score,
+
+                'ly_do' => $canhBao->ly_do ?? $danhSachLyDo,
                 'created_at' => $canhBao->created_at?->toIso8601String(),
+
+                // ✅ QUAN TRỌNG: check null
+                'post' => $post ? [
+                    'id' => $post->id,
+                    'tieu_de' => $post->tieu_de,
+                    'mo_ta' => $post->mo_ta,
+                    'hinh_anh' => $post->hinh_anh ? ($post->hinh_anh[0] ?? null) : null,
+                ] : null,
+
+                'campaign' => $campaign ? [
+                    'id' => $campaign->id,
+                    'ten' => $campaign->ten_chien_dich ?? null,
+                    'hinh_anh' => $campaign->hinh_anh ?? null,
+
+                    'organization_name' => $campaign->ten_to_chuc ?? null,
+                ] : null,
             ];
         })->values();
 
@@ -216,14 +287,32 @@ class FraudController extends Controller
      */
     public function updateAlert(UpdateFraudAlertRequest $request, CanhBaoGianLan $canhBao)
     {
+        $data = $request->validated();
+        $trangThai = $data['trang_thai'];
+        $decision = $data['decision'] ?? match ($trangThai) {
+            'DA_XU_LY' => 'VI_PHAM',
+            default => 'CHO_XU_LY',
+        };
+
         $canhBao->update([
-            'trang_thai' => $request->validated()['trang_thai'],
+            'trang_thai' => $trangThai,
+            'decision' => $decision,
+            'admin_id' => (int) $request->user()->id,
+            'admin_note' => $data['admin_note'] ?? null,
+            'reviewed_at' => now(),
         ]);
+
+        if ($trangThai === 'DA_XU_LY' && $decision === 'VI_PHAM') {
+            $this->notifyViolationToUser($canhBao, (string) ($data['admin_note'] ?? null));
+        }
 
         return response()->json([
             'data' => [
                 'id' => (int)$canhBao->id,
                 'trang_thai' => $canhBao->trang_thai,
+                'decision' => $canhBao->decision,
+                'admin_id' => $canhBao->admin_id,
+                'reviewed_at' => $canhBao->reviewed_at?->toIso8601String(),
             ],
         ]);
     }
@@ -242,7 +331,7 @@ class FraudController extends Controller
             $ly_do[] = 'Spam bài đăng';
         }
 
-        if (($feature_data['content_similarity'] ?? 0) > 0.8) {
+        if (($feature_data['content_similarity'] ?? 0) > 0.9) {
             $ly_do[] = 'Nội dung trùng lặp';
         }
 
@@ -250,12 +339,24 @@ class FraudController extends Controller
             $ly_do[] = 'Tăng tiền bất thường';
         }
 
-        if (($feature_data['same_ip_accounts'] ?? 0) > 3) {
+        if (($feature_data['same_ip_accounts'] ?? 0) > 5) {
             $ly_do[] = 'Nhiều tài khoản cùng IP';
         }
 
         if (($feature_data['activity_score'] ?? 0) > 10) {
             $ly_do[] = 'Hành vi bất thường';
+        }
+
+        if (($feature_data['burst_activity'] ?? 0) > 6) {
+            $ly_do[] = 'Bùng nổ hoạt động bất thường';
+        }
+
+        if (($feature_data['max_jump'] ?? 0) > 2500000) {
+            $ly_do[] = 'Biến động giá trị đột ngột';
+        }
+
+        if (($feature_data['variance'] ?? 0) > 0.15) {
+            $ly_do[] = 'Độ lệch hành vi cao';
         }
 
         return $ly_do;
@@ -268,27 +369,33 @@ class FraudController extends Controller
     private function getCampaignFraudReasons(array $muc_dac_trung): array
     {
         $ly_do = [];
-
-        if (($muc_dac_trung['campaigns_per_user'] ?? 0) >= 4) {
+        
+        $soChienDich = (float) ($muc_dac_trung['campaigns_per_user'] ?? 0);
+        $tangTruong = max(0.0, (float) ($muc_dac_trung['donation_growth'] ?? 0));
+        $tiLeTu = (float) ($muc_dac_trung['self_donation_ratio'] ?? 0);
+        $soNguoi = (float) ($muc_dac_trung['unique_donors'] ?? 0);  
+        $tanSuat = (float) ($muc_dac_trung['donation_frequency'] ?? 0);
+    
+        if ($soChienDich >= 4) {
             $ly_do[] = 'Nhiều chiến dịch cùng tổ chức';
         }
-
-        if (($muc_dac_trung['donation_growth'] ?? 0) >= 200) {
+    
+        if ($tangTruong >= 200) {
             $ly_do[] = 'Tăng ủng hộ bất thường (chiến dịch)';
         }
-
-        if (($muc_dac_trung['self_donation_ratio'] ?? 0) >= 0.5) {
+    
+        if ($tiLeTu >= 0.5) {
             $ly_do[] = 'Tỷ lệ tự ủng hộ cao';
         }
-
-        if (($muc_dac_trung['unique_donors'] ?? 99) <= 3) {
+    
+        if ($soNguoi > 0 && $soNguoi <= 3) {
             $ly_do[] = 'Ít người ủng hộ';
         }
-
-        if (($muc_dac_trung['donation_frequency'] ?? 0) >= 8) {
+    
+        if ($tanSuat >= 8) {
             $ly_do[] = 'Ủng hộ dày đặc (7 ngày gần đây)';
         }
-
+    
         return $ly_do;
     }
 
@@ -299,6 +406,7 @@ class FraudController extends Controller
      */
     private function saveFraudAlerts(array $danh_sach_ket_qua): void
     {
+        $aggregator = app(AlertAggregationService::class);
         foreach ($danh_sach_ket_qua as $dong) {
             $mucRuiRo = (string)($dong['muc_rui_ro'] ?? 'LOW');
             if ($mucRuiRo !== 'HIGH') {
@@ -306,32 +414,45 @@ class FraudController extends Controller
             }
 
             $userId = (int)$dong['user_id'];
-            if ($this->shouldSkipDuplicateAlert($userId)) {
-                continue;
-            }
-
             $danhSachLyDo = is_array($dong['ly_do'] ?? null) ? $dong['ly_do'] : [];
             $duLieuDacTrung = is_array($dong['dac_trung'] ?? null) ? $dong['dac_trung'] : [];
             $diemRuiRo = $this->computeStoredRiskScore($duLieuDacTrung, $danhSachLyDo);
 
-            $loaiGianLan = !empty($danhSachLyDo) ? (string)$danhSachLyDo[0] : 'Hành vi bất thường';
-            $moTa = implode(' | ', $danhSachLyDo);
-            if ($moTa === '') {
-                $moTa = 'Hành vi bất thường';
-            }
-            $moTa = mb_substr($moTa, 0, 255);
-
             $chienDichId = $this->detectCampaignId($userId);
+            $targetType = $chienDichId ? 'campaign' : 'user';
+            $targetId = $chienDichId ?: $userId;
 
-            CanhBaoGianLan::create([
-                'nguoi_dung_id' => $userId,
-                'chien_dich_id' => $chienDichId,
-                'loai_gian_lan' => $loaiGianLan,
-                'diem_rui_ro' => $diemRuiRo,
-                'mo_ta' => $moTa,
-                'trang_thai' => 'CHO_XU_LY',
-                'created_at' => now(),
-            ]);
+            foreach ($danhSachLyDo as $lyDo) {
+                $violation = $this->mapAiUserReasonToAggregation((string) $lyDo, $duLieuDacTrung, $userId);
+                if ($violation === null) {
+                    continue;
+                }
+                if ($this->wasRejectedByAdmin($userId, $chienDichId, $violation['title'], $violation['reason_text'])) {
+                    continue;
+                }
+
+                $alert = $aggregator->upsertAggregatedAlert(
+                    userId: $userId,
+                    targetType: $targetType,
+                    targetId: $targetId,
+                    source: 'AI',
+                    violationCode: $violation['code'],
+                    title: $violation['title'],
+                    reasonText: $violation['reason_text'],
+                    score: $diemRuiRo,
+                    campaignId: $chienDichId,
+                    initialCount: $violation['count'],
+                    timeWindowSeconds: $violation['time_window_seconds'],
+                    detailItems: $violation['details'],
+                    notifyOnCreate: true,
+                    notify: function (CanhBaoGianLan $canhBao) {
+                        $this->notifyAdminsForAlert($canhBao, 'AI phát hiện hành vi nghi ngờ (đã gom nhóm)');
+                    }
+                );
+
+                // keep $alert in scope for potential future side effects
+                unset($alert);
+            }
         }
     }
 
@@ -405,6 +526,7 @@ class FraudController extends Controller
      */
     private function saveCampaignFraudAlerts(array $danh_sach_ket_qua): void
     {
+        $aggregator = app(AlertAggregationService::class);
         foreach ($danh_sach_ket_qua as $dong) {
             $mucRuiRo = (string) ($dong['muc_rui_ro'] ?? 'LOW');
             if ($mucRuiRo !== 'HIGH') {
@@ -425,23 +547,214 @@ class FraudController extends Controller
             $duLieuDacTrung = is_array($dong['dac_trung'] ?? null) ? $dong['dac_trung'] : [];
             $diemRuiRo = $this->computeStoredCampaignRiskScore($duLieuDacTrung, $danhSachLyDo);
 
-            $loaiGianLan = ! empty($danhSachLyDo) ? (string) $danhSachLyDo[0] : 'Gian lận chiến dịch / ủng hộ';
-            $moTa = implode(' | ', $danhSachLyDo);
-            if ($moTa === '') {
-                $moTa = $loaiGianLan;
-            }
-            $moTa = mb_substr($moTa, 0, 255);
+            foreach ($danhSachLyDo as $lyDo) {
+                $violation = $this->mapAiCampaignReasonToAggregation((string) $lyDo, $duLieuDacTrung, $idChienDich);
+                if ($violation === null) {
+                    continue;
+                }
+                if ($this->wasRejectedByAdmin($idChuSoHuu, $idChienDich, $violation['title'], $violation['reason_text'])) {
+                    continue;
+                }
 
-            CanhBaoGianLan::create([
-                'nguoi_dung_id' => $idChuSoHuu,
-                'chien_dich_id' => $idChienDich,
-                'loai_gian_lan' => $loaiGianLan,
-                'diem_rui_ro' => $diemRuiRo,
-                'mo_ta' => $moTa,
-                'trang_thai' => 'CHO_XU_LY',
-                'created_at' => now(),
-            ]);
+                $alert = $aggregator->upsertAggregatedAlert(
+                    userId: $idChuSoHuu,
+                    targetType: 'campaign',
+                    targetId: $idChienDich,
+                    source: 'AI',
+                    violationCode: $violation['code'],
+                    title: $violation['title'],
+                    reasonText: $violation['reason_text'],
+                    score: $diemRuiRo,
+                    campaignId: $idChienDich,
+                    initialCount: $violation['count'],
+                    timeWindowSeconds: $violation['time_window_seconds'],
+                    detailItems: $violation['details'],
+                    notifyOnCreate: true,
+                    notify: function (CanhBaoGianLan $canhBao) {
+                        $this->notifyAdminsForAlert($canhBao, 'AI phát hiện chiến dịch nghi ngờ (đã gom nhóm)');
+                    }
+                );
+                unset($alert);
+            }
         }
+    }
+
+    /**
+     * @param array<string, mixed> $features
+     * @return array{code:string,title:string,reason_text:string,count:int,time_window_seconds:?int,details:array<int,array<string,mixed>>}|null
+     */
+    private function mapAiUserReasonToAggregation(string $reason, array $features, int $userId): ?array
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            return null;
+        }
+
+        $code = match ($reason) {
+            'Spam bài đăng' => 'AI_SPAM_BAI_DANG',
+            'Nội dung trùng lặp' => 'AI_NOI_DUNG_TRUNG_LAP',
+            'Tăng tiền bất thường' => 'AI_TANG_TIEN_BAT_THUONG',
+            'Nhiều tài khoản cùng IP' => 'AI_NHIEU_IP',
+            'Hành vi bất thường' => 'AI_HANH_VI_BAT_THUONG',
+            'Bùng nổ hoạt động bất thường' => 'AI_POSTING_TOO_FAST',
+            'Biến động giá trị đột ngột' => 'AI_MAX_JUMP',
+            'Độ lệch hành vi cao' => 'AI_CONTENT_VARIANCE',
+            default => null,
+        };
+        if ($code === null) {
+            return null;
+        }
+
+        $timeWindowSeconds = null;
+        $count = 1;
+        $details = [];
+
+        if ($code === 'AI_POSTING_TOO_FAST') {
+            $timeWindowSeconds = 10 * 60;
+            $count = (int) max(1, (int) ($features['burst_activity'] ?? 1));
+            $ids = DB::table('bai_dang')
+                ->where('nguoi_dung_id', $userId)
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->orderByDesc('id')
+                ->limit(20)
+                ->pluck('id')
+                ->all();
+            foreach ($ids as $id) {
+                $details[] = ['type' => 'post', 'id' => (int) $id];
+            }
+        }
+
+        if ($code === 'AI_SPAM_BAI_DANG') {
+            $timeWindowSeconds = 24 * 60 * 60;
+            $count = (int) max(1, (int) round((float) ($features['posts_per_day'] ?? 1)));
+            $ids = DB::table('bai_dang')
+                ->where('nguoi_dung_id', $userId)
+                ->where('created_at', '>=', now()->subDay())
+                ->orderByDesc('id')
+                ->limit(20)
+                ->pluck('id')
+                ->all();
+            foreach ($ids as $id) {
+                $details[] = ['type' => 'post', 'id' => (int) $id];
+            }
+        }
+
+        if ($code === 'AI_NOI_DUNG_TRUNG_LAP') {
+            $timeWindowSeconds = 10 * 60;
+            $count = 0;
+            $ids = DB::table('bai_dang')
+                ->where('nguoi_dung_id', $userId)
+                ->orderByDesc('created_at')
+                ->limit(8)
+                ->pluck('id')
+                ->all();
+            foreach ($ids as $id) {
+                $count++;
+                $details[] = ['type' => 'post', 'id' => (int) $id];
+            }
+            $count = max(2, $count);
+        }
+
+        return [
+            'code' => $code,
+            'title' => $reason,
+            'reason_text' => $reason,
+            'count' => $count,
+            'time_window_seconds' => $timeWindowSeconds,
+            'details' => $details,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $features
+     * @return array{code:string,title:string,reason_text:string,count:int,time_window_seconds:?int,details:array<int,array<string,mixed>>}|null
+     */
+    private function mapAiCampaignReasonToAggregation(string $reason, array $features, int $campaignId): ?array
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            return null;
+        }
+
+        $code = match ($reason) {
+            'Nhiều chiến dịch cùng tổ chức' => 'AI_NHIEU_CHIEN_DICH',
+            'Tăng ủng hộ bất thường (chiến dịch)' => 'AI_TANG_UNG_HO_BAT_THUONG',
+            'Tỷ lệ tự ủng hộ cao' => 'AI_TU_UNG_HO_CAO',
+            'Ít người ủng hộ' => 'AI_IT_NGUOI_UNG_HO',
+            'Ủng hộ dày đặc (7 ngày gần đây)' => 'AI_UNG_HO_DAY_DAC',
+            default => null,
+        };
+        if ($code === null) {
+            return null;
+        }
+
+        $details = [
+            ['type' => 'campaign', 'id' => (int) $campaignId],
+        ];
+
+        $timeWindowSeconds = null;
+        $count = 1;
+        if ($code === 'AI_UNG_HO_DAY_DAC') {
+            $timeWindowSeconds = 7 * 24 * 60 * 60;
+            $count = (int) max(1, (int) round((float) ($features['donation_frequency'] ?? 1)));
+        }
+
+        return [
+            'code' => $code,
+            'title' => $reason,
+            'reason_text' => $reason,
+            'count' => $count,
+            'time_window_seconds' => $timeWindowSeconds,
+            'details' => $details,
+        ];
+    }
+
+    private function notifyAdminsForAlert(CanhBaoGianLan $canhBao, string $source): void
+    {
+        $admins = User::query()
+            ->whereHas('roles', fn($q) => $q->where('ten_vai_tro', 'ADMIN'))
+            ->get();
+
+        $tt = strtolower((string) ($canhBao->target_type ?? ''));
+        $postId = $tt === 'post' ? (int) $canhBao->target_id : null;
+
+        foreach ($admins as $admin) {
+            $admin->notify(new AdminViolationDetectedNotification(
+                source: $source,
+                canhBaoId: (int) $canhBao->id,
+                userId: (int) $canhBao->nguoi_dung_id,
+                campaignId: $canhBao->chien_dich_id ? (int) $canhBao->chien_dich_id : null,
+                postId: $postId,
+                reason: $canhBao->loai_gian_lan ?: ($canhBao->mo_ta ?: 'Vi phạm nghi ngờ'),
+                description: null,
+                scenario: AdminViolationDetectedNotification::SCENARIO_AI
+            ));
+        }
+    }
+
+    private function wasRejectedByAdmin(
+        int $userId,
+        ?int $campaignId,
+        string $loaiGianLan,
+        string $moTa
+    ): bool {
+        $query = CanhBaoGianLan::query()
+            ->where('nguoi_dung_id', $userId)
+            ->where('trang_thai', 'DA_XU_LY')
+            ->where('decision', 'KHONG_VI_PHAM');
+
+        if ($campaignId) {
+            $query->where('chien_dich_id', $campaignId);
+        } else {
+            $query->whereNull('chien_dich_id');
+        }
+
+        $query->where(function ($q) use ($loaiGianLan, $moTa) {
+            $q->where('loai_gian_lan', $loaiGianLan)
+                ->orWhere('mo_ta', $moTa);
+        });
+
+        return $query->exists();
     }
 
     private function shouldSkipDuplicateAlert(int $userId): bool
@@ -495,5 +808,35 @@ class FraudController extends Controller
 
         return $chienDichId ? (int)$chienDichId : null;
     }
-}
 
+    private function normalizeAlertType(string $label): string
+    {
+        $normalized = mb_strtolower(trim($label));
+        return str_replace(' ', '_', $normalized);
+    }
+
+    private function notifyViolationToUser(CanhBaoGianLan $canhBao, ?string $adminNote): void
+    {
+        $user = User::query()->find((int) $canhBao->nguoi_dung_id);
+        if (!$user) {
+            return;
+        }
+
+        $targetType = strtolower((string) ($canhBao->target_type ?? 'user'));
+        $targetId = (int) ($canhBao->target_id ?? $canhBao->nguoi_dung_id);
+        $entity = match ($targetType) {
+            'post' => 'Bài đăng',
+            'campaign' => 'Chiến dịch',
+            default => 'Tài khoản',
+        };
+
+        $reason = $adminNote ?: ((string) ($canhBao->ly_do ?? $canhBao->loai_canh_bao ?? 'Vi phạm chính sách'));
+        $user->notify(new ApprovalNotification(
+            type: 'lock',
+            name: $entity,
+            reason: $reason,
+            targetType: $targetType,
+            targetId: $targetId
+        ));
+    }
+}

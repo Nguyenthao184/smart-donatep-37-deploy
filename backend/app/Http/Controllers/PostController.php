@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Models\BaiDang;
+use App\Services\FraudDetectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -60,7 +61,7 @@ class PostController extends Controller
         $posts->getCollection()->transform(function (BaiDang $post) use ($currentUserId) {
 
             $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                ? secure_asset('storage/' . $post->nguoiDung->anh_dai_dien)
                 : null;
 
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
@@ -218,7 +219,7 @@ class PostController extends Controller
             }
 
             $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                ? secure_asset('storage/' . $post->nguoiDung->anh_dai_dien)
                 : null;
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
             $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
@@ -268,7 +269,7 @@ class PostController extends Controller
         $post = $query->findOrFail($id);
 
         $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-            ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+            ? secure_asset('storage/' . $post->nguoiDung->anh_dai_dien)
             : null;
         $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
         $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
@@ -317,7 +318,7 @@ class PostController extends Controller
 
         $posts->getCollection()->transform(function (BaiDang $post) {
             $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                ? secure_asset('storage/' . $post->nguoiDung->anh_dai_dien)
                 : null;
 
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
@@ -455,7 +456,7 @@ class PostController extends Controller
         }
         $post->load('nguoiDung');
         $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-            ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+            ? secure_asset('storage/' . $post->nguoiDung->anh_dai_dien)
             : null;
         $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
         $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
@@ -471,13 +472,20 @@ class PostController extends Controller
             ->orderByDesc('is_primary')
             ->orderByDesc('confidence')
             ->get(['danh_muc_code', 'is_primary', 'confidence']);
-
+        app(FraudDetectionService::class)->checkPost(
+            (int) $userId,
+            (int) $post->id,
+            (string) $post->tieu_de,
+            (string) $post->mo_ta
+        );
         return response()->json([
             'message' => 'Tạo bài đăng thành công',
             'data' => $post,
             'danh_muc_goi_y' => $danhMucGoiY,
             'matches' => $realtimeMatches,
             'matches_source' => $realtimeMatches === [] ? 'none' : 'ai',
+            'fraud_check_message' => 'Bài đăng đang được kiểm tra',
+
         ], 201);
     }
 
@@ -603,7 +611,7 @@ class PostController extends Controller
 
         $post->load('nguoiDung');
         $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-            ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+            ? secure_asset('storage/' . $post->nguoiDung->anh_dai_dien)
             : null;
         $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
         $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
@@ -704,7 +712,7 @@ class PostController extends Controller
                 $post = $m->baiDangPhuHop;
 
                 $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-                    ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                    ? secure_asset('storage/' . $post->nguoiDung->anh_dai_dien)
                     : null;
 
                 $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
@@ -808,7 +816,7 @@ class PostController extends Controller
             }
 
             $post->avatar_url = $post->nguoiDung && $post->nguoiDung->anh_dai_dien
-                ? asset('storage/' . $post->nguoiDung->anh_dai_dien)
+                ? secure_asset('storage/' . $post->nguoiDung->anh_dai_dien)
                 : null;
             $paths = is_array($post->hinh_anh) ? $post->hinh_anh : [];
             $post->hinh_anh_urls = array_values(array_map(fn($p) => $this->resolveMediaUrl($p), $paths));
@@ -984,7 +992,7 @@ class PostController extends Controller
         }
 
         $raw = trim($value);
-        return $this->isAbsoluteUrl($raw) ? $raw : asset('storage/' . ltrim($raw, '/'));
+        return $this->isAbsoluteUrl($raw) ? $raw : secure_asset('storage/' . ltrim($raw, '/'));
     }
 
     private function isAbsoluteUrl(?string $value): bool
@@ -1210,4 +1218,65 @@ class PostController extends Controller
             'data' => $posts
         ]);
     }
+    // public function suspendByAdmin(Request $request, int $id)
+    // {
+    //     $request->validate([
+    //         'ly_do' => 'nullable|string|max:255|required_without:violation_reason',
+    //         'violation_reason' => 'nullable|array|required_without:ly_do',
+    //         'violation_reason.code' => 'nullable|string|max:100',
+    //         'violation_reason.title' => 'nullable|string|max:255',
+    //         'violation_reason.description' => 'nullable|string|max:255',
+    //         'mo_ta' => 'nullable|string|max:255',
+    //     ]);
+
+    //     $lyDoThongBao = $this->resolveViolationReasonText($request);
+    //     $post = BaiDang::query()->findOrFail($id);
+    //     if ($post->trang_thai === 'TAM_DUNG') {
+    //         return response()->json([
+    //             'message' => 'Bài đăng đã ở trạng thái tạm dừng.',
+    //         ], 422);
+    //     }
+
+    //     $post->update(['trang_thai' => 'TAM_DUNG']);
+
+    //     $owner = User::query()->find((int) $post->nguoi_dung_id);
+    //     if ($owner) {
+    //         $owner->notify(new ApprovalNotification(
+    //             'lock',
+    //             'Bài đăng',
+    //             $lyDoThongBao,
+    //             'post',
+    //             (int) $post->id
+    //         ));
+    //     }
+
+    //     return response()->json([
+    //         'message' => 'Đã tạm dừng bài đăng.',
+    //         'data' => [
+    //             'id' => (int) $post->id,
+    //             'trang_thai' => $post->trang_thai,
+    //         ],
+    //     ]);
+    // }
+
+    // private function resolveViolationReasonText(Request $request): string
+    // {
+    //     $lyDo = trim((string) $request->input('ly_do', ''));
+    //     $reason = $request->input('violation_reason');
+    //     $moTa = trim((string) $request->input('mo_ta', ''));
+
+    //     if (is_array($reason)) {
+    //         $parts = array_values(array_filter([
+    //             isset($reason['title']) ? trim((string) $reason['title']) : '',
+    //             isset($reason['description']) ? trim((string) $reason['description']) : '',
+    //             $moTa,
+    //         ]));
+
+    //         if ($parts !== []) {
+    //             return mb_substr(implode(' - ', $parts), 0, 255);
+    //         }
+    //     }
+
+    //     return mb_substr($lyDo !== '' ? $lyDo : $moTa, 0, 255);
+    // }
 }

@@ -14,7 +14,9 @@ class UpdateFraudAlertRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'trang_thai' => 'required|string|in:CHO_XU_LY,DA_KIEM_TRA,CANH_BAO_SAI',
+            'trang_thai' => 'required|string|in:CHO_XU_LY,DA_XU_LY',
+            'decision' => 'nullable|string|in:CHO_XU_LY,VI_PHAM,KHONG_VI_PHAM',
+            'admin_note' => 'nullable|string|max:1000',
         ];
     }
 }

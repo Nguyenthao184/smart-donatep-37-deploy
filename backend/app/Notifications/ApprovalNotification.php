@@ -3,10 +3,11 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
-class ApprovalNotification extends Notification
+class ApprovalNotification extends Notification implements ShouldBroadcastNow
 {
     use Queueable;
     public function __construct(
@@ -19,6 +20,12 @@ class ApprovalNotification extends Notification
 
     public function via($notifiable)
     {
+        // ✅ FIX: Type 'lock' (vi phạm) không gửi broadcast
+        // Chỉ gửi database notification cho user, không phát tới admin
+        if ($this->type === 'lock') {
+            return ['database'];
+        }
+
         return ['database', 'broadcast'];
     }
 
@@ -30,6 +37,10 @@ class ApprovalNotification extends Notification
             'lock' => "{$this->name} đã bị khóa",
             default => 'Thông báo'
         };
+
+        if (!empty($this->reason)) {
+            $message .= ': ' . $this->reason;
+        }
 
         return [
             // Trường chuẩn hóa để FE phân loại và điều hướng ổn định.

@@ -17,8 +17,12 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use App\Services\ApprovalService;
 use App\Notifications\ApprovalNotification;
+use App\Notifications\AdminReviewRequiredNotification;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Events\CampaignCreated;
+use App\Events\CampaignImportantUpdated;
 
 class CampaignController extends Controller
 {
@@ -113,6 +117,11 @@ class CampaignController extends Controller
             'trang_thai' => 'CHO_XU_LY'
         ]);
 
+        $this->notifyAdminsForPendingCampaign($chienDich);
+        event(new CampaignCreated(
+            campaignId: (int) $chienDich->id,
+            ownerUserId: (int) ($user->id ?? 0),
+        ));
         return response()->json([
             'message' => 'Tạo chiến dịch thành công, chờ duyệt',
             'data' => $chienDich
@@ -162,7 +171,7 @@ class CampaignController extends Controller
             }
 
             // nếu là path thì convert sang URL
-            return asset('storage/' . ltrim($img, '/'));
+            return secure_asset('storage/' . ltrim($img, '/'));
 
         }, $images);
 
@@ -231,8 +240,8 @@ class CampaignController extends Controller
 
         $anh_cu = array_map(function ($img) {
             // nếu là URL → chuyển về path
-            if (str_starts_with($img, asset('storage/'))) {
-                return str_replace(asset('storage/'), '', $img);
+            if (str_starts_with($img, secure_asset('storage/'))) {
+                return str_replace(secure_asset('storage/'), '', $img);
             }
 
             return $img; 
@@ -243,8 +252,8 @@ class CampaignController extends Controller
         foreach ($xoa_anh as $img) {
 
             // convert URL -> path
-            if (str_starts_with($img, asset('storage/'))) {
-                $path = str_replace(asset('storage/'), '', $img);
+            if (str_starts_with($img, secure_asset('storage/'))) {
+                $path = str_replace(secure_asset('storage/'), '', $img);
             } else {
                 $path = $img;
             }
@@ -261,7 +270,15 @@ class CampaignController extends Controller
         }
 
         $finalImages = array_values(array_merge($anh_cu, $anh_moi));
-        
+        $before = [
+            'ten_chien_dich' => (string) $chienDich->ten_chien_dich,
+            'mo_ta' => (string) $chienDich->mo_ta,
+            'muc_tieu_tien' => (string) $chienDich->muc_tieu_tien,
+            'ngay_ket_thuc' => (string) $chienDich->ngay_ket_thuc,
+            'vi_tri' => (string) $chienDich->vi_tri,
+            'lat' => (string) $chienDich->lat,
+            'lng' => (string) $chienDich->lng,
+        ];
         $chienDich->update([
             'danh_muc_id' => $request->danh_muc_id,
             'ten_chien_dich' => $request->ten_chien_dich,
@@ -275,13 +292,36 @@ class CampaignController extends Controller
             'lat' => $request->lat,
             'lng' => $request->lng,
         ]);
+        $after = [
+            'ten_chien_dich' => (string) $chienDich->ten_chien_dich,
+            'mo_ta' => (string) $chienDich->mo_ta,
+            'muc_tieu_tien' => (string) $chienDich->muc_tieu_tien,
+            'ngay_ket_thuc' => (string) $chienDich->ngay_ket_thuc,
+            'vi_tri' => (string) $chienDich->vi_tri,
+            'lat' => (string) $chienDich->lat,
+            'lng' => (string) $chienDich->lng,
+        ];
 
+        $importantFields = ['ten_chien_dich', 'mo_ta', 'muc_tieu_tien'];
+        $changed = [];
+        foreach ($importantFields as $f) {
+            if (($before[$f] ?? null) !== ($after[$f] ?? null)) {
+                $changed[] = $f;
+            }
+        }
+        if ($changed !== []) {
+            event(new CampaignImportantUpdated(
+                campaignId: (int) $chienDich->id,
+                ownerUserId: (int) ($user->id ?? 0),
+                changedFields: $changed,
+            ));
+        }
         $images = array_map(function ($img) {
             if (str_starts_with($img, 'http')) {
                 return $img;
             }
 
-            return asset('storage/' . ltrim($img, '/'));
+            return secure_asset('storage/' . ltrim($img, '/'));
         }, $finalImages);
         $chienDich->hinh_anh = $images;
 
@@ -346,7 +386,12 @@ class CampaignController extends Controller
         if ($request->trang_thai) {
             $query->where('trang_thai', $request->trang_thai);
         }
-
+        if ($request->boolean('only_violations')) {
+            $query->whereHas('canhBaoGianLan', function ($q) {
+                $q->where('target_type', 'campaign')
+                  ->where('trang_thai', 'CHO_XU_LY');
+            });
+        }
         $query->orderByRaw("
             CASE 
                 WHEN trang_thai = 'CHO_XU_LY' THEN 1
@@ -444,7 +489,7 @@ class CampaignController extends Controller
             }
 
             // nếu là path thì convert sang URL
-            return asset('storage/' . $img);
+            return secure_asset('storage/' . $img);
 
         }, $images);
 
@@ -502,15 +547,11 @@ class CampaignController extends Controller
             'mo_ta' => $chienDich->mo_ta,
             'ten_danh_muc' => $chienDich->danhMuc->ten_danh_muc ?? null,
             'trang_thai' => $chienDich->trang_thai,
-
-
             'hinh_anh' => $images,
-
             'so_tien_da_nhan' => $chienDich->so_tien_da_nhan,
             'muc_tieu_tien' => $chienDich->muc_tieu_tien,
             'phan_tram' => $phanTram,
             'ma_noi_dung_ck' => $chienDich->ma_noi_dung_ck,
-
             'ngay_bat_dau' => optional($chienDich->created_at)->format('d/m/Y'),
             'ngay_ket_thuc' => \Carbon\Carbon::parse($chienDich->ngay_ket_thuc)->format('d/m/Y'),
             'so_ngay_con_lai' => $ngayConLai,
@@ -522,7 +563,7 @@ class CampaignController extends Controller
             'to_chuc' => [
                 'id' => $chienDich->toChuc->id ?? null,
                 'ten_to_chuc' => $chienDich->toChuc->ten_to_chuc ?? null,
-                'logo' => $chienDich->toChuc->logo ? asset('storage/' . $chienDich->toChuc->logo) : null,
+                'logo' => $chienDich->toChuc->logo ? secure_asset('storage/' . $chienDich->toChuc->logo) : null,
                 'mo_ta' => $chienDich->toChuc->mo_ta ?? null,
                 'dia_chi' => $chienDich->toChuc->dia_chi ?? null,
                 'email' => $chienDich->toChuc->email ?? null,
@@ -541,7 +582,10 @@ class CampaignController extends Controller
         $campaign = ChienDichGayQuy::findOrFail($id);
 
         $service->approve($campaign);
-
+        event(new CampaignCreated(
+            campaignId: (int) $campaign->id,
+            ownerUserId: (int) ($campaign->toChuc->user->id ?? 0),
+        ));
         $user = $campaign->toChuc->user;
 
         $user->notify(new ApprovalNotification(
@@ -685,7 +729,7 @@ class CampaignController extends Controller
             'id' => $item->id,
             'ten_chien_dich' => $item->ten_chien_dich,
             'ten_to_chuc' => $item->toChuc->ten_to_chuc ?? null,
-            'hinh_anh' => $image ? asset('storage/' . $image) : null,
+            'hinh_anh' => $image ? secure_asset('storage/' . $image) : null,
             'so_tien_da_nhan' => $soTien,
             'muc_tieu_tien' => $mucTieu,
             'phan_tram' => $phanTram,
@@ -702,7 +746,7 @@ class CampaignController extends Controller
             ->select('id', 'ten_danh_muc', 'hinh_anh')
             ->get()
             ->map(function ($item) {
-                $item->hinh_anh = asset('storage/' . $item->hinh_anh);
+                $item->hinh_anh = secure_asset('storage/' . $item->hinh_anh);
                 return $item;
             });
 
@@ -912,5 +956,20 @@ class CampaignController extends Controller
         return response()->json([
             'data' => $data
         ]);
+    } 
+    private function notifyAdminsForPendingCampaign(ChienDichGayQuy $campaign): void
+    {
+        $admins = User::query()
+            ->whereHas('roles', fn ($q) => $q->where('ten_vai_tro', 'ADMIN'))
+            ->get();
+
+        foreach ($admins as $admin) {
+            $admin->notify(new AdminReviewRequiredNotification(
+                targetType: 'campaign',
+                targetId: (int) $campaign->id,
+                title: 'Có chiến dịch mới chờ duyệt',
+                message: 'Chiến dịch "' . $campaign->ten_chien_dich . '" đang chờ admin duyệt.'
+            ));
+        }
     }
 }

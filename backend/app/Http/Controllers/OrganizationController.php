@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\XacMinhToChuc;
+use App\Notifications\AdminReviewRequiredNotification;
+use App\Models\User;
 use App\Models\TaiKhoanGayQuy;
 use App\Models\ToChuc;
 use App\Models\VaiTro;
@@ -55,14 +57,15 @@ class OrganizationController extends Controller
             ]);
 
             $org->giay_phep = $org->giay_phep 
-                ? asset('storage/' . $org->giay_phep) 
+                ? secure_asset('storage/' . $org->giay_phep) 
                 : null;
 
             $org->logo = $org->logo 
-                ? asset('storage/' . $org->logo) 
+                ? secure_asset('storage/' . $org->logo) 
                 : null;
 
             DB::commit();
+                    $this->notifyAdminsForPendingOrganization($org);
 
             return response()->json([
                 'message' => 'Đăng ký thành công, vui lòng chờ admin duyệt',
@@ -312,7 +315,7 @@ class OrganizationController extends Controller
             return [
                 'id' => $org->id,
                 'ten_to_chuc' => $org->ten_to_chuc,
-                'logo' => $org->logo ? asset('storage/' . $org->logo) : null,
+                'logo' => $org->logo ? secure_asset('storage/' . $org->logo) : null,
                 'dia_chi' => $org->dia_chi,
                 'tong_gay_quy' => (float) $org->tong_gay_quy,
                 'so_tai_khoan' => optional($org->taiKhoanGayQuy)->so_tai_khoan,
@@ -344,7 +347,7 @@ class OrganizationController extends Controller
                 $hinhAnh = null;
                 if ($cd->hinh_anh) {
                     $arr = json_decode($cd->hinh_anh, true);
-                    $hinhAnh = isset($arr[0]) ? asset('storage/' . $arr[0]) : null;
+                    $hinhAnh = isset($arr[0]) ? secure_asset('storage/' . $arr[0]) : null;
                 }
 
                 // % hoàn thành
@@ -421,7 +424,7 @@ class OrganizationController extends Controller
             // thông tin tổ chức
             'id' => $org->id,
             'ten_to_chuc' => $org->ten_to_chuc,
-            'logo' => $org->logo ? asset('storage/' . $org->logo) : null,
+            'logo' => $org->logo ? secure_asset('storage/' . $org->logo) : null,
             'mo_ta' => $org->mo_ta,
             'dia_chi' => $org->dia_chi,
             'so_dien_thoai' => $org->so_dien_thoai,
@@ -435,7 +438,7 @@ class OrganizationController extends Controller
             'so_tai_khoan' => optional($tk)->so_tai_khoan,
             'so_du_hien_tai' => (float) optional($tk)->so_du ?? 0,
             'qr_code' => optional($tk)->qr_code 
-                ? asset('storage/' . $tk->qr_code) 
+                ? secure_asset('storage/' . $tk->qr_code) 
                 : null,
 
             // thống kê (match UI)
@@ -521,5 +524,20 @@ class OrganizationController extends Controller
         }
 
         return $str;
+    }
+    private function notifyAdminsForPendingOrganization(XacMinhToChuc $org): void
+    {
+        $admins = User::query()
+            ->whereHas('roles', fn ($q) => $q->where('ten_vai_tro', 'ADMIN'))
+            ->get();
+
+        foreach ($admins as $admin) {
+            $admin->notify(new AdminReviewRequiredNotification(
+                targetType: 'organization',
+                targetId: (int) $org->id,
+                title: 'Có tổ chức mới chờ duyệt',
+                message: 'Tổ chức "' . $org->ten_to_chuc . '" vừa gửi hồ sơ xác minh.'
+            ));
+        }
     }
 }
