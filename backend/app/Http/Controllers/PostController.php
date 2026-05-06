@@ -494,21 +494,48 @@ class PostController extends Controller
         $post->hinh_anh_url = $post->hinh_anh_urls[0] ?? null; // backward compatible
         unset($post->nguoiDung);
 
-        $aiService = app(AiMatchingService::class);
-        $realtimeMatches = $this->buildRealtimeMatchesPayload($post, (int) $userId, $aiService);
+        // AI matching is best-effort: never fail post creation if AI service is down.
+        $realtimeMatches = [];
+        try {
+            $aiService = app(AiMatchingService::class);
+            $realtimeMatches = $this->buildRealtimeMatchesPayload($post, (int) $userId, $aiService);
+        } catch (\Throwable $e) {
+            Log::warning('Post store: realtime matches failed', [
+                'post_id' => (int) $post->id,
+                'error' => $e->getMessage(),
+            ]);
+            $realtimeMatches = [];
+        }
 
-        FindPostMatches::dispatch((int) $post->id)->delay(now()->addSeconds(2));
+        // Queue driver may be sync on deploy; job must not break request.
+        try {
+            FindPostMatches::dispatch((int) $post->id)->delay(now()->addSeconds(2));
+        } catch (\Throwable $e) {
+            Log::warning('Post store: dispatch FindPostMatches failed', [
+                'post_id' => (int) $post->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $danhMucGoiY = DanhMucBaiDang::where('bai_dang_id', $post->id)
             ->orderByDesc('is_primary')
             ->orderByDesc('confidence')
             ->get(['danh_muc_code', 'is_primary', 'confidence']);
-        app(FraudDetectionService::class)->checkPost(
-            (int) $userId,
-            (int) $post->id,
-            (string) $post->tieu_de,
-            (string) $post->mo_ta
-        );
+        // Fraud checks are best-effort: do not block post creation.
+        try {
+            app(FraudDetectionService::class)->checkPost(
+                (int) $userId,
+                (int) $post->id,
+                (string) $post->tieu_de,
+                (string) $post->mo_ta
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Post store: fraud check failed', [
+                'post_id' => (int) $post->id,
+                'user_id' => (int) $userId,
+                'error' => $e->getMessage(),
+            ]);
+        }
         return response()->json([
             'message' => 'Tạo bài đăng thành công',
             'data' => $post,
@@ -650,7 +677,14 @@ class PostController extends Controller
             ->orderByDesc('confidence')
             ->get(['danh_muc_code', 'is_primary', 'confidence']);
 
-        FindPostMatches::dispatch((int) $post->id)->delay(now()->addSeconds(2));
+        try {
+            FindPostMatches::dispatch((int) $post->id)->delay(now()->addSeconds(2));
+        } catch (\Throwable $e) {
+            Log::warning('Post update: dispatch FindPostMatches failed', [
+                'post_id' => (int) $post->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
         return response()->json([
             'message' => 'Cập nhật bài đăng thành công',
             'data' => $post,
