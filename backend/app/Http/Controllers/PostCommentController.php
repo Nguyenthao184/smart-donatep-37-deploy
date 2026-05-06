@@ -135,7 +135,7 @@ class PostCommentController extends Controller
     {
         $u = $c->nguoiDung;
         $avatarUrl = $u && $u->anh_dai_dien
-            ? asset('storage/' . $u->anh_dai_dien)
+            ? secure_asset('storage/' . $u->anh_dai_dien)
             : null;
 
         return [
@@ -162,7 +162,7 @@ class PostCommentController extends Controller
                     'id' => (int) $ru->id,
                     'ho_ten' => $ru->ho_ten,
                     'avatar_url' => $ru->anh_dai_dien
-                        ? asset('storage/' . $ru->anh_dai_dien)
+                        ? secure_asset('storage/' . $ru->anh_dai_dien)
                         : null,
                 ] : null,
             ];

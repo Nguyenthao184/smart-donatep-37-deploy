@@ -187,7 +187,7 @@ class TroChuyenController extends Controller
 
             $avatarUrl = null;
             if ($otherUser && !empty($otherUser->anh_dai_dien)) {
-                $avatarUrl = asset('storage/' . $otherUser->anh_dai_dien);
+                $avatarUrl = secure_asset('storage/' . $otherUser->anh_dai_dien);
             }
 
             $last = null;

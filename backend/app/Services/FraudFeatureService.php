@@ -32,6 +32,9 @@ class FraudFeatureService
                 $tangTruongUngHo,
                 $soTaiKhoanCungIp
             );
+            $burstActivity = $this->calcBurstActivity((int)$nguoiDung->id);
+            $maxJump = $this->calcMaxJump((int)$nguoiDung->id);
+            $variance = $this->calcVariance((int)$nguoiDung->id);
 
             $ketQua[] = [
                 'user_id' => (int)$nguoiDung->id,
@@ -40,6 +43,9 @@ class FraudFeatureService
                 'donation_growth' => round($tangTruongUngHo, 4),
                 'same_ip_accounts' => (int)$soTaiKhoanCungIp,
                 'activity_score' => round($diemHoatDong, 4),
+                'burst_activity' => round($burstActivity, 4),
+                'max_jump' => round($maxJump, 4),
+                'variance' => round($variance, 4),
             ];
         }
 
@@ -162,6 +168,71 @@ class FraudFeatureService
         $diemTongHop += $sameIpAccounts * 2.0;
 
         return $diemTongHop;
+    }
+
+    private function calcBurstActivity(int $userId): float
+    {
+        $count10m = DB::table('bai_dang')
+            ->where('nguoi_dung_id', $userId)
+            ->where('created_at', '>=', now()->subMinutes(10))
+            ->count();
+
+        return (float) $count10m;
+    }
+
+    private function calcMaxJump(int $userId): float
+    {
+        if (!Schema::hasTable('ung_ho')) {
+            return 0.0;
+        }
+
+        $amounts = DB::table('ung_ho')
+            ->where('nguoi_dung_id', $userId)
+            ->where('created_at', '>=', now()->subDays(14))
+            ->orderBy('created_at')
+            ->pluck('so_tien')
+            ->map(fn ($v) => (float) $v)
+            ->values()
+            ->all();
+
+        if (count($amounts) < 2) {
+            return 0.0;
+        }
+
+        $maxJump = 0.0;
+        for ($i = 1; $i < count($amounts); $i++) {
+            $jump = abs($amounts[$i] - $amounts[$i - 1]);
+            if ($jump > $maxJump) {
+                $maxJump = $jump;
+            }
+        }
+
+        return $maxJump;
+    }
+
+    private function calcVariance(int $userId): float
+    {
+        $texts = DB::table('bai_dang')
+            ->where('nguoi_dung_id', $userId)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->pluck('mo_ta')
+            ->map(fn ($t) => strlen((string) $t))
+            ->values()
+            ->all();
+
+        $n = count($texts);
+        if ($n < 2) {
+            return 0.0;
+        }
+
+        $mean = array_sum($texts) / $n;
+        $sum = 0.0;
+        foreach ($texts as $x) {
+            $sum += ($x - $mean) ** 2;
+        }
+
+        return ($sum / $n) / max(1.0, $mean ** 2);
     }
 }
 

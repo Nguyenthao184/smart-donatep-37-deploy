@@ -58,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function(){
             Route::get('/users', [AdminUserController::class, 'index']);
             Route::post('/users/{id}/lock', [AdminUserController::class, 'lock']);
             Route::post('/users/{id}/unlock', [AdminUserController::class, 'unlock']);
+            Route::get('/users/organizations/pending/{id}', [AdminUserController::class, 'showLicense']);
 
             // ADMIN - dashboard
             Route::get('/dashboard/summary', [AdminDashboardController::class, 'summary']);
@@ -70,9 +71,11 @@ Route::middleware('auth:sanctum')->group(function(){
             Route::get('/organizations/{id}', [OrganizationController::class, 'show']);
             Route::get('/campaigns', [CampaignController::class, 'index']);
             Route::get('/campaigns/{id}', [CampaignController::class, 'show']);
+            Route::get('/campaigns/{id}/violations', [PostReportController::class, 'campaignViolations'])->whereNumber('id');
+
             Route::get('/posts', [PostController::class, 'index']);
             Route::get('/posts/{id}', [PostController::class, 'show']);
-
+            Route::get('/posts/{id}/violations', [PostReportController::class, 'postViolations'])->whereNumber('id');
             // ADMIN - duyet to chuc
             Route::post('/organization/{id}/approve', [OrganizationController::class, 'approve']);
             Route::post('/organization/{id}/reject', [OrganizationController::class, 'reject']);
@@ -83,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function(){
             // ADMIN - duyet chien dich
             Route::post('/campaigns/{id}/approve', [CampaignController::class, 'approveCampaign']);
             Route::post('/campaigns/{id}/reject', [CampaignController::class, 'rejectCampaign']);
+            Route::post('/campaigns/{id}/suspend', [CampaignController::class, 'suspendCampaign']);
 
             // ADMIN - fraud
             Route::post('/fraud-check/auto', [FraudController::class, 'autoCheck']);
@@ -90,8 +94,10 @@ Route::middleware('auth:sanctum')->group(function(){
             Route::get('/fraud-alerts', [FraudController::class, 'getAlerts']);
             Route::post('/fraud-alerts/{canhBao}', [FraudController::class, 'updateAlert']);
 
-            Route::get('/post-reports', [PostReportController::class, 'adminIndex']);
+             Route::get('/violation-reasons', [PostReportController::class, 'violationReasons']);
             Route::post('/post-reports/{id}', [PostReportController::class, 'adminUpdate'])->whereNumber('id');
+            Route::get('/post-reports', [PostReportController::class, 'adminIndex']);
+            Route::post('/posts/{id}/suspend', [PostController::class, 'suspendByAdmin'])->whereNumber('id');
         });
 
        
@@ -128,6 +134,7 @@ Route::middleware('auth:sanctum')->group(function(){
         Route::get('/posts/{id}/related', [PostController::class, 'related']);
         Route::post('/posts/{id}', [PostController::class, 'update'])->whereNumber('id');
         Route::delete('/posts/{id}', [PostController::class, 'destroy'])->whereNumber('id');
+        
         Route::get('/posts/search', [PostController::class, 'search']);
         // AI matching
         Route::get('/posts/{id}/matches', [PostController::class, 'matches'])->whereNumber('id');

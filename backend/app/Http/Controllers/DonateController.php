@@ -10,9 +10,16 @@ use App\Models\ChienDichGayQuy;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use App\Models\UngHo;
+use App\Services\RuleBasedFraudDetector;
+use App\Services\FraudDetectionService;
+use App\Events\DonationCreated;
 
 class DonateController extends Controller
 {
+    public function __construct(
+        private readonly RuleBasedFraudDetector $ruleDetector,
+        private readonly FraudDetectionService $fraudDetectionService
+    ) {}
     // Ủng hộ
     public function donate(DonateRequest $request)
     {
@@ -59,7 +66,8 @@ class DonateController extends Controller
                 ]);
 
             DB::commit();
-
+         app(FraudDetectionService::class)->checkUser((int) $user->id);
+            // Campaign fraud detection will be triggered when payment is confirmed (THANH_CONG).
             // ===== CASE 1: MOMO =====
             if ($request->phuong_thuc_thanh_toan === 'momo') {
                 $tk = $campaign->taiKhoanGayQuy;
@@ -260,7 +268,7 @@ class DonateController extends Controller
         }
 
         $raw = trim($value);
-        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : asset('storage/' . ltrim($raw, '/'));
+        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : secure_asset('storage/' . ltrim($raw, '/'));
     }
 
     private function removeVietnameseAccents($str) 
@@ -407,7 +415,11 @@ class DonateController extends Controller
                     ->increment('so_tien_da_nhan', $ungHoLocked->so_tien);
 
                 DB::commit();
-
+            event(new DonationCreated(
+                    campaignId: (int) $campaign->id,
+                    donationId: (int) $ungHoLocked->id,
+                    donorUserId: (int) $ungHoLocked->nguoi_dung_id,
+                ));
                 return redirect()->away(
                     env('FRONTEND_URL') . '/thanh-cong?' . http_build_query($request->all())
                 );
@@ -535,7 +547,11 @@ class DonateController extends Controller
                     ->increment('so_tien_da_nhan', $ungHoLocked->so_tien);
 
                 DB::commit();
-
+                event(new DonationCreated(
+                    campaignId: (int) $campaign->id,
+                    donationId: (int) $ungHoLocked->id,
+                    donorUserId: (int) $ungHoLocked->nguoi_dung_id,
+                ));
                 return response()->json(['message' => 'OK']);
             }
 
