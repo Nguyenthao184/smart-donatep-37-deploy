@@ -125,7 +125,7 @@ class BaiDangSeeder extends Seeder
                 'Quần áo mùa hè' => [
                     'posts/quan_ao_mua_he_1_cho.jpg',
                     'posts/quan_ao_mua_he_2_cho.png',
-                    'posts/quan_ao_mua_he_1_cho.png',
+
                     'posts/ao_mua_he_1_cho.jpg',
                     'posts/ao_mua_he_1_cho.png',
                     'posts/ao_mua_he_2_cho.png',
@@ -133,8 +133,8 @@ class BaiDangSeeder extends Seeder
 
 
                 'Gạo' => ['posts/gao_cho.jpg', 'posts/gao_1_cho.jpg', 'posts/gao_2_cho.jpg', 'posts/gao_3_cho.jpg'],
-                'Thùng Mì tôm' => ['posts/mi_tom_1_cho.jpg'],
-                'Gạo + Mì' => ['posts/gao_mi_cho.jpg', 'posts/gao_cho.jpg', 'posts/mi_tom_1_cho.jpg'],
+                'Thùng Mì tôm' => ['posts/mi_tom_1_cho.jpg', 'posts/mi_tom_cho.jpg', 'posts/mi_tom_2_cho.jpg'],
+                'Gạo + Mì' => ['posts/gao_mi_cho.png', 'posts/gao_cho.jpg', 'posts/mi_tom_1_cho.jpg'],
                 'Rau củ' => ['posts/rau_cho.jpg'],
                 'Sữa' => ['posts/sua_cho.jpg'],
                 'Nhu yếu phẩm' => ['posts/nhu_yeu_pham_cho.jpg'],
@@ -145,17 +145,18 @@ class BaiDangSeeder extends Seeder
                     'posts/rau_cho.jpg',
                     'posts/sua_cho.jpg',
                     'posts/gao_mi_cho.jpg',
+                    'posts/thuc_pham_2_cho.jpg',
                 ],
-                'Bàn học' => [],
-                'Ghế học sinh' => [],
-                'Quạt điện' => [],
-                'Bếp gas' => [],
-                'Nồi niêu' => [],
-                'Tủ lạnh' => [],
-                'Máy giặt' => [],
-                'Bàn ghế' => [],
-                'Giường' => [],
-                'Tủ quần áo' => [],
+                'Bàn học' => ['posts/ban_hoc_cho.jpg', 'posts/ban_hoc_1_cho.jpg', 'posts/ban_hoc_2_cho.jpg'],
+                'Ghế học sinh' => ['posts/ghe_hoc_sinh_cho.jpg', 'posts/ghe_hoc_sinh_1_cho.jpg', 'posts/ghe_hoc_sinh_2_cho.jpg'],
+                'Quạt điện' => ['posts/quat_dien_cho.jpg', 'posts/quat_dien_1_cho.jpg'],
+                'Bếp gas' => ['posts/bep_gas_cho.png', 'posts/bep_gas_1_cho.jpg'],
+                'Nồi niêu' => ['posts/noi_nieu_cho.jpg', 'posts/noi_nieu_1_cho.jpg'],
+                'Tủ lạnh' => ['posts/tu_lanh_cho.jpg', 'posts/tu_lanh_1_cho.jpg'],
+                'Máy giặt' => ['posts/may_giat_cho.jpg', 'posts/may_giat_1_cho.jpg'],
+                'Bàn ghế' => ['posts/ban_ghe_cho.jpg', 'posts/ban_ghe_1_cho.jpg'],
+                'Giường' => ['posts/giuong_cho.jpg', 'posts/giuong_1_cho.jpg'],
+                'Tủ quần áo' => ['posts/tu_quan_ao_cho.jpg', 'posts/tu_quan_ao_1_cho.jpg'],
 
                 'Sách bút' => ['posts/sach_but_cho.png', 'posts/vo_but_chi_cho.jpg', 'posts/but_cho.jpg'],
                 'Cặp học sinh' => ['posts/cap_hoc_sinh_cho.png'],
@@ -192,6 +193,7 @@ class BaiDangSeeder extends Seeder
                 'Thùng Mì tôm' => [
                     'posts/mi_tom_nhan.jpg',
                     'posts/mi_tom_1_nhan.jpg',
+                    'posts/mi_tom_2_nhan.jpg',
                 ],
                 'Gạo + Mì' => [
                     'posts/mi_tom_gao_nhan.jpg',
@@ -219,18 +221,18 @@ class BaiDangSeeder extends Seeder
                 'Nồi cơm' => [
                     'posts/noi_com_nhan.jpg',
                 ],
-                'Xe máy' => [],
-                'Xe đạp' => [],
-                'Bàn học' => [],
-                'Ghế học sinh' => [],
-                'Quạt điện' => [],
-                'Bếp gas' => [],
-                'Nồi niêu' => [],
-                'Tủ lạnh' => [],
-                'Máy giặt' => [],
-                'Bàn ghế' => [],
-                'Giường' => [],
-                'Tủ quần áo' => [],
+                'Xe máy' => ['posts/xe_may_nhan.jpg', 'posts/xe_may_1_nhan.jpg'],
+                'Xe đạp' => ['posts/xe_dap_nhan.jpg', 'posts/xe_dap_1_nhan.jpg'],
+                'Bàn học' => ['posts/ban_hoc_nhan.jpg', 'posts/ban_hoc_1_nhan.png', 'posts/ban_hoc_2_nhan.jpg'],
+                'Ghế học sinh' => ['posts/ghe_hoc_sinh_nhan.jpg', 'posts/ghe_hoc_sinh_1_nhan.jpg', 'posts/ghe_hoc_sinh_2_nhan.jpg'],
+                'Quạt điện' => ['posts/quat_dien_nhan.jpg', 'posts/quat_dien_1_nhan.jpg'],
+                'Bếp gas' => ['posts/bep_gas_nhan.png', 'posts/bep_gas_1_nhan.jpg'],
+                'Nồi niêu' => ['posts/noi_nieu_nhan.jpg', 'posts/noi_nieu_1_nhan.jpg'],
+                'Tủ lạnh' => ['posts/tu_lanh_nhan.jpg', 'posts/tu_lanh_1_nhan.jpg'],
+                'Máy giặt' => ['posts/may_giat_nhan.jpg'],
+                'Bàn ghế' => ['posts/ban_ghe_nhan.jpg'],
+                'Giường' => ['posts/giuong_nhan.jpg'],
+                'Tủ quần áo' => ['posts/tu_quan_ao_nhan.jpg'],
             ],
         ];
 
@@ -338,14 +340,14 @@ class BaiDangSeeder extends Seeder
                 ];
 
                 $randomNoise = Arr::random($noise);
-                shuffle($sentences);
-                shuffle($extra);
+                $selectedSentences = Arr::random($sentences, rand(1, min(3, count($sentences))));
+                $selectedExtra = Arr::random($extra, rand(1, min(2, count($extra))));
                 $take = rand(3, 6);
                 $qty = rand(1, 10);
                 $moTa = "Mình cần khoảng {$qty} {$tenChuDe}, {$randomNoise}. "
                     . implode(' ', array_merge(
-                        array_slice($sentences, 0, rand(1, 3)),
-                        array_slice($extra, 0, rand(1, 2))
+                        (array) $selectedSentences,
+                        (array) $selectedExtra
                     ));
             } else {
                 $sentences = [
@@ -368,14 +370,15 @@ class BaiDangSeeder extends Seeder
                     "không còn nhu cầu",
                     "còn khá ổn",
                 ];
-                shuffle($sentences);
-                shuffle($extra);
+                $selectedSentences = Arr::random($sentences, rand(1, min(3, count($sentences))));
+
+                $selectedExtra = Arr::random($extra, rand(1, min(2, count($extra))));
                 $randomNoise = Arr::random($noise);
                 $qty = rand(1, 10);
                 $moTa = "Mình có khoảng {$qty} {$tenChuDe}, {$randomNoise}. "
                     . implode(' ', array_merge(
-                        array_slice($sentences, 0, rand(1, 3)),
-                        array_slice($extra, 0, rand(1, 2))
+                        (array) $selectedSentences,
+                        (array) $selectedExtra,
                     ));
             }
 
@@ -425,16 +428,18 @@ class BaiDangSeeder extends Seeder
 
         $likes = [];
         $comments = [];
-        collect($rows)->chunk(200)->each(function ($chunk) {
-            DB::table('bai_dang')->insert($chunk->toArray());
-        });
+        foreach (array_chunk($rows, 200) as $chunk) {
+            DB::table('bai_dang')->insert($chunk);
+        }
 
-        $postIds = DB::table('bai_dang')->pluck('id');
+        $posts = DB::table('bai_dang')
+            ->select('id', 'nguoi_dung_id')
+            ->get();
 
-        foreach ($postIds as $postId) {
-            $postOwner = DB::table('bai_dang')
-                ->where('id', $postId)
-                ->value('nguoi_dung_id');
+        foreach ($posts as $post) {
+
+            $postId = $post->id;
+            $postOwner = $post->nguoi_dung_id;
 
             $commentUsers = collect($nguoiDungIds)
                 ->reject(fn($id) => $id == $postOwner)
@@ -459,17 +464,25 @@ class BaiDangSeeder extends Seeder
                 $likes[] = [
                     'bai_dang_id' => $postId,
                     'nguoi_dung_id' => $uid,
-                    'created_at' => now()->subMinutes(rand(1, 1000)),
+                    'created_at' => $now->copy()->subMinutes(rand(1, 1000)),
                 ];
             }
+            if (count($likes) >= 500) {
+                DB::table('thich_bai_dang')->insert($likes);
+                $likes = [];
+            }
+
+            if (count($comments) >= 500) {
+                DB::table('binh_luan_bai_dang')->insert($comments);
+                $comments = [];
+            }
+        }
+        if (!empty($likes)) {
+            DB::table('thich_bai_dang')->insert($likes);
         }
 
-        collect($likes)->chunk(500)->each(function ($chunk) {
-            DB::table('thich_bai_dang')->insert($chunk->toArray());
-        });
-
-        collect($comments)->chunk(500)->each(function ($chunk) {
-            DB::table('binh_luan_bai_dang')->insert($chunk->toArray());
-        });
+        if (!empty($comments)) {
+            DB::table('binh_luan_bai_dang')->insert($comments);
+        }
     }
 }

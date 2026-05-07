@@ -229,10 +229,31 @@ class AuthController extends Controller
 
         Cache::put('register_' . $email, $data, now()->addMinutes(5));
 
-        Mail::send('emails.otp', ['otp' => $otp], function ($message) use ($data) {
-            $message->to($data['email'])
-                    ->subject('Mã xác minh đăng ký');
-        });
+        $html = View::make('emails.otp', [
+            'otp' => $otp
+        ])->render();
+
+        $response = Http::withHeaders([
+            'api-key' => env('BREVO_API_KEY'),
+            'Content-Type' => 'application/json'
+        ])->post('https://api.brevo.com/v3/smtp/email', [
+            "sender" => [
+                "name" => "SmartDonate",
+                "email" => "ngthaonhubinh@gmail.com"
+            ],
+            "to" => [
+                ["email" => $data['email']]
+            ],
+            "subject" => "Mã xác minh đăng ký",
+            "htmlContent" => $html
+        ]);
+
+        if (!$response->successful()) {
+            return response()->json([
+                'message' => 'Gửi OTP thất bại',
+                'error' => $response->body()
+            ], 500);
+        }
 
         return response()->json(['message' => 'OTP đã được gửi lại']);
     }
@@ -261,10 +282,31 @@ class AuthController extends Controller
         Cache::put('forgot_' . $email, $otp, now()->addMinutes(5));
         Cache::put('forgot_limit_' . $email, true, 60);
 
-        Mail::send('emails.otp', ['otp' => $otp], function ($message) use ($email) {
-            $message->to($email)
-                    ->subject('Quên mật khẩu');
-        });
+        $html = View::make('emails.otp', [
+            'otp' => $otp
+        ])->render();
+
+        $response = Http::withHeaders([
+            'api-key' => env('BREVO_API_KEY'),
+            'Content-Type' => 'application/json'
+        ])->post('https://api.brevo.com/v3/smtp/email', [
+            "sender" => [
+                "name" => "SmartDonate",
+                "email" => "ngthaonhubinh@gmail.com"
+            ],
+            "to" => [
+                ["email" => $email]
+            ],
+            "subject" => "Quên mật khẩu",
+            "htmlContent" => $html
+        ]);
+
+        if (!$response->successful()) {
+            return response()->json([
+                'message' => 'Gửi OTP thất bại',
+                'error' => $response->body()
+            ], 500);
+        }
 
         return response()->json([
             'message' => 'OTP đã được gửi về email'
