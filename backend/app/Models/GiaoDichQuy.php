@@ -14,7 +14,11 @@ class GiaoDichQuy extends Model
         'ung_ho_id',
         'so_tien',
         'loai_giao_dich',
-        'mo_ta'
+        'mo_ta',
+        'trang_thai',
+        'ma_giao_dich_ngan_hang',
+        'ghi_chu_admin',
+        'ngay_giao_dich',
     ];
 
     public function ungHo()

@@ -107,6 +107,7 @@ class GiaoDichQuySeeder extends Seeder
                         'ung_ho_id' => null,
                         'so_tien' => $rut,
                         'loai_giao_dich' => 'RUT',
+                        'trang_thai' => 'DA_DUYET',
                         'mo_ta' => 'Giải ngân chiến dịch lần '. ($i + 1) . ' ' . $campaign->ten_chien_dich,
                         'created_at' => $createdAt,
                     ]);

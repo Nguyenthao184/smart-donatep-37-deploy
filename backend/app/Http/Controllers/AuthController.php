@@ -208,7 +208,7 @@ class AuthController extends Controller
         $user = $request->user()->load('roles');
         $user->anh_dai_dien = $this->resolveMediaUrl($user->anh_dai_dien);
         return response()->json([
-            'user' => $request->user(),
+            'user' => $user,
             'roles' => $user->roles->pluck('ten_vai_tro'),
             'has_password' => $user->mat_khau ? true : false
         ]);

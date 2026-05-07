@@ -23,8 +23,6 @@ class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         $user = auth()->user();
-        $userId = auth()->user();
-        $roleId = $user->roles()->first()->id;
         $rules = [
             'ho_ten' => [
                 'sometimes',
@@ -35,7 +33,7 @@ class UpdateProfileRequest extends FormRequest
             'anh_dai_dien' => [
                 'sometimes',
                 'image',
-                'mimes:jpg,jpeg,png',
+                'mimes:jpg,jpeg,png,webp',
                 'max:2048'
             ],
             'dia_chi_user' => [
