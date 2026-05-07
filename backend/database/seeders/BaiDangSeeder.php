@@ -116,7 +116,6 @@ class BaiDangSeeder extends Seeder
                     'posts/quan_ao_mua_dong_cho.png',
                     'posts/quan_ao_mua_dong_5_cho.jpg',
                     'posts/quan_ao_mua_dong_1_cho.png',
-                    'posts/quan_ao_mua_dong_cho.jpg',
                     'posts/quan_ao_mua_dong_2.jpg',
                     'posts/quan_ao_mua_dong_3_cho.jpg',
                     'posts/quan_ao_mua_dong_2.png',
@@ -134,7 +133,7 @@ class BaiDangSeeder extends Seeder
 
                 'Gạo' => ['posts/gao_cho.jpg', 'posts/gao_1_cho.jpg', 'posts/gao_2_cho.jpg', 'posts/gao_3_cho.jpg'],
                 'Thùng Mì tôm' => ['posts/mi_tom_1_cho.jpg', 'posts/mi_tom_cho.jpg', 'posts/mi_tom_2_cho.jpg'],
-                'Gạo + Mì' => ['posts/gao_mi_cho.png', 'posts/gao_cho.jpg', 'posts/mi_tom_1_cho.jpg'],
+                'Gạo + Mì' => [ 'posts/gao_cho.jpg', 'posts/mi_tom_1_cho.jpg'],
                 'Rau củ' => ['posts/rau_cho.jpg'],
                 'Sữa' => ['posts/sua_cho.jpg'],
                 'Nhu yếu phẩm' => ['posts/nhu_yeu_pham_cho.jpg'],
@@ -484,5 +483,6 @@ class BaiDangSeeder extends Seeder
         if (!empty($comments)) {
             DB::table('binh_luan_bai_dang')->insert($comments);
         }
+
     }
 }
