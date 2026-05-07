@@ -63,7 +63,7 @@ class UserProfileController extends Controller
             'ho_ten',
         ]);
 
-        if ($request->has('dia_chi_user')) {
+        if ($request->filled('dia_chi_user')) {
 
             $diaChi = $request->dia_chi_user;
         

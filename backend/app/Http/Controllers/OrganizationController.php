@@ -393,7 +393,8 @@ class OrganizationController extends Controller
         $tongChi = DB::table('giao_dich_quy')
             ->join('tai_khoan_gay_quy', 'giao_dich_quy.tai_khoan_gay_quy_id', '=', 'tai_khoan_gay_quy.id')
             ->where('tai_khoan_gay_quy.to_chuc_id', $id)
-            ->where('loai_giao_dich', 'RUT')
+            ->where('giao_dich_quy.loai_giao_dich', 'RUT')
+            ->where('giao_dich_quy.trang_thai', 'DA_DUYET')
             ->sum('so_tien');
 
         // Tổng chiến dịch
@@ -436,7 +437,6 @@ class OrganizationController extends Controller
             // tài khoản
             'ten_tai_khoan' => optional($tk)->chu_tai_khoan,
             'so_tai_khoan' => optional($tk)->so_tai_khoan,
-            'so_du_hien_tai' => (float) optional($tk)->so_du ?? 0,
             'qr_code' => optional($tk)->qr_code 
                 ? secure_asset('storage/' . $tk->qr_code) 
                 : null,
@@ -444,6 +444,7 @@ class OrganizationController extends Controller
             // thống kê (match UI)
             'tong_thu' => (float) $tongThu,
             'tong_chi' => (float) $tongChi,
+            'so_du_hien_tai' => (float) ($tongThu - $tongChi),
             'tong_chien_dich' => $tongChienDich,
             'tong_luot_ung_ho' => $tongLuotUngHo,
 

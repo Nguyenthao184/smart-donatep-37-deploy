@@ -865,36 +865,48 @@ class CampaignController extends Controller
 
         try {
 
-            $tongNhap = collect($request->chi_tiet)->sum('so_tien');
+            $tongNhap = collect($request->chi_tiet)
+                ->sum(fn($item) => (float) $item['so_tien']);
 
             if ($tongNhap != $giaoDich->so_tien) {
+
+                DB::rollBack();
+
                 return response()->json([
                     'message' => 'Tổng chi phải bằng số tiền đã rút'
                 ], 400);
             }
 
+            $giaoDich->update([
+                'mo_ta' => $request->mo_ta
+            ]);
+
+            $savedIds = [];
             $data = [];
 
             foreach ($request->chi_tiet as $item) {
-                //update
+
+                // UPDATE
                 if (!empty($item['id'])) {
+
                     $chiTieu = ChiTieuChienDich::where('id', $item['id'])
                         ->where('giao_dich_quy_id', $giaoDich->id)
                         ->first();
 
-                    if ($chiTieu) {
-                        $chiTieu->update([
-                            'ten_hoat_dong' => $item['ten_hoat_dong'],
-                            'so_tien' => $item['so_tien'],
-                            'mo_ta' => $item['mo_ta'] ?? null
-                        ]);
+                    if (!$chiTieu) {
+                        continue;
                     }
 
-                    $data[] = $chiTieu;
-                }
-                // create
-                else {
-                    $data[] = ChiTieuChienDich::create([
+                    $chiTieu->update([
+                        'ten_hoat_dong' => $item['ten_hoat_dong'],
+                        'so_tien' => $item['so_tien'],
+                        'mo_ta' => $item['mo_ta'] ?? null
+                    ]);
+
+                } else {
+
+                    // CREATE
+                    $chiTieu = ChiTieuChienDich::create([
                         'chien_dich_gay_quy_id' => $chienDich->id,
                         'giao_dich_quy_id' => $giaoDich->id,
                         'ten_hoat_dong' => $item['ten_hoat_dong'],
@@ -902,7 +914,15 @@ class CampaignController extends Controller
                         'mo_ta' => $item['mo_ta'] ?? null
                     ]);
                 }
+
+                $savedIds[] = $chiTieu->id;
+                $data[] = $chiTieu;
             }
+
+            // XÓA các item đã bị remove khỏi form
+            ChiTieuChienDich::where('giao_dich_quy_id', $giaoDich->id)
+                ->whereNotIn('id', $savedIds)
+                ->delete();
 
             DB::commit();
 
@@ -912,10 +932,12 @@ class CampaignController extends Controller
             ]);
 
         } catch (\Exception $e) {
+
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Có lỗi xảy ra'
+                'message' => 'Có lỗi xảy ra',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

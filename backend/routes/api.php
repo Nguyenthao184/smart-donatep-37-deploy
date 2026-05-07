@@ -18,6 +18,7 @@ use App\Http\Controllers\TroChuyenController;
 use App\Http\Controllers\PostCommentController;
 use App\Http\Controllers\PostReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\WithdrawRequestController;
 
 Route::post('/register', [AuthController::class,'register']);
 Route::post('/send-otp', [AuthController::class, 'sendOtp']);
@@ -98,6 +99,11 @@ Route::middleware('auth:sanctum')->group(function(){
             Route::post('/post-reports/{id}', [PostReportController::class, 'adminUpdate'])->whereNumber('id');
             Route::get('/post-reports', [PostReportController::class, 'adminIndex']);
             Route::post('/posts/{id}/suspend', [PostController::class, 'suspendByAdmin'])->whereNumber('id');
+
+            // ADMIN - duyet rut tien
+            Route::get('/withdraw-requests', [WithdrawRequestController::class, 'adminIndex']);
+            Route::put('/withdraw-requests/{id}/confirm', [WithdrawRequestController::class, 'confirm']);
+            Route::put('/withdraw-requests/{id}/reject', [WithdrawRequestController::class, 'reject']);
         });
 
        
@@ -122,7 +128,11 @@ Route::middleware('auth:sanctum')->group(function(){
         Route::get('/campaigns/{id}/withdraw-expenses', [CampaignController::class, 'getWithdrawWithExpenses']);
         Route::post('/campaigns/{id}/expenses', [CampaignController::class, 'storeExpense']);
         Route::get('/campaigns/{id}/withdraw-transactions', [CampaignController::class, 'getWithdrawTransactions']);
-        //Thống kê bài đăng
+        
+        //yêu cầu rút tiền
+        Route::get('/withdraw-requests', [WithdrawRequestController::class, 'index']);
+        Route::post('/withdraw-requests', [WithdrawRequestController::class, 'store']);
+        Route::get('/withdraw-requests/campaigns', [WithdrawRequestController::class, 'campaigns']);
       
    });
 
