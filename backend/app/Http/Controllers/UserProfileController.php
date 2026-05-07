@@ -193,7 +193,7 @@ class UserProfileController extends Controller
 
         // 2. Tổ chức
         $xacMinh = XacMinhToChuc::where('nguoi_dung_id', $id)
-            ->where('trang_thai', 'DA_DUYET')
+            ->where('trang_thai', 'CHAP_NHAN')
             ->select('ten_to_chuc', 'mo_ta', 'loai_hinh')
             ->latest()
             ->first();
@@ -254,6 +254,8 @@ class UserProfileController extends Controller
                 'dia_diem' => $post->dia_diem,
                 'trang_thai' => $post->trang_thai,
                 'ngay_dang' => $post->created_at->format('d/m/Y H:i'),
+                'loai_bai' => $post->loai_bai,
+                'so_luong' => $post->so_luong,
 
                 'hinh_anh_urls' => $hinhAnhUrls,
                 'hinh_anh_url' => $hinhAnhUrls[0] ?? null,

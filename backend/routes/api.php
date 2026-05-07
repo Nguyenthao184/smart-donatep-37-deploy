@@ -38,6 +38,7 @@ Route::get('/dashboard/community-stats', [DashboardController::class, 'community
 
 // ds danh mục
 Route::get('/categories', [CampaignController::class, 'getDanhMuc']);
+Route::get('/posts/search', [PostController::class, 'search']);
 
 Route::middleware('auth:sanctum')->group(function(){
     Route::get('/me', [AuthController::class, 'me']);
@@ -145,7 +146,7 @@ Route::middleware('auth:sanctum')->group(function(){
         Route::post('/posts/{id}', [PostController::class, 'update'])->whereNumber('id');
         Route::delete('/posts/{id}', [PostController::class, 'destroy'])->whereNumber('id');
         
-        Route::get('/posts/search', [PostController::class, 'search']);
+        
         // AI matching
         Route::get('/posts/{id}/matches', [PostController::class, 'matches'])->whereNumber('id');
        
