@@ -31,6 +31,7 @@ class AdminReviewRequiredNotification extends Notification implements ShouldBroa
         $reviewKind = match (strtolower((string) $this->targetType)) {
             'organization' => 'organization_verification',
             'campaign' => 'campaign_pending_review',
+            'withdraw_request' => 'withdraw_request_pending',
             default => 'generic',
         };
 
