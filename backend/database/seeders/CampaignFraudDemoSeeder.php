@@ -138,7 +138,7 @@ class CampaignFraudDemoSeeder extends Seeder
         DB::table('chien_dich_gay_quy')
             ->where('id', $campaign->id)
             ->update([
-                'so_tien_da_nhan' => $tong,
+                'so_tien_da_nhan' => 0,
             ]);
 
         app(CampaignFraudDetectionService::class)

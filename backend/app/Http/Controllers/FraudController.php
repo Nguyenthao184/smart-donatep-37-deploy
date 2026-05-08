@@ -230,10 +230,25 @@ class FraudController extends Controller
                     ->first();
             }
 
+            $source = strtoupper((string) ($canhBao->source ?? 'AI'));
+            $loaiCanhBao = $canhBao->loai_canh_bao ?? $canhBao->loai_gian_lan;
+            $lyDoOut = $canhBao->ly_do ?? $danhSachLyDo;
+
+            // Convert USER_REPORT codes (spam_post/abusive_content/...) to Vietnamese friendly titles/descriptions.
+            if ($source === 'USER_REPORT' || str_starts_with($moTa, 'USER_REPORT|')) {
+                [$title, $desc, $code, $userDesc] = $this->formatUserReportReasonFromMeta($moTa);
+                if ($title !== null) {
+                    $loaiCanhBao = $title;
+                }
+                if ($desc !== null) {
+                    $lyDoOut = $desc . ($userDesc ? (' | ' . $userDesc) : '');
+                }
+            }
+
             return [
                 'id' => (int)$canhBao->id,
                 'report_id' => $canhBao->details['report_id'] ?? null,
-                'source' => strtoupper((string) ($canhBao->source ?? 'AI')),
+                'source' => $source,
                 'type' => $targetType,
                 'target' => $targetType . ' #' . $targetId,
 
@@ -244,7 +259,7 @@ class FraudController extends Controller
                 'chien_dich_id' => $canhBao->chien_dich_id ? (int)$canhBao->chien_dich_id : null,
 
                 'loai_gian_lan' => $canhBao->loai_gian_lan,
-                'loai_canh_bao' => $canhBao->loai_canh_bao ?? $canhBao->loai_gian_lan,
+                'loai_canh_bao' => $loaiCanhBao,
 
                 'trang_thai' => $canhBao->trang_thai,
                 'decision' => $canhBao->decision ?? $canhBao->trang_thai,
@@ -256,7 +271,7 @@ class FraudController extends Controller
                 'muc_rui_ro' => $risk,
                 'diem_rui_ro' => $score,
 
-                'ly_do' => $canhBao->ly_do ?? $danhSachLyDo,
+                'ly_do' => $lyDoOut,
                 'created_at' => $canhBao->created_at?->toIso8601String(),
 
                 // ✅ QUAN TRỌNG: check null
@@ -280,6 +295,41 @@ class FraudController extends Controller
         return response()->json([
             'data' => $danhSachCanhBao,
         ]);
+    }
+
+    /**
+     * Parse meta stored in `mo_ta` for USER_REPORT and map to friendly VN texts.
+     *
+     * @return array{0:?string,1:?string,2:?string,3:?string} [title, description, code, user_description]
+     */
+    private function formatUserReportReasonFromMeta(string $rawMeta): array
+    {
+        $code = null;
+        $userDesc = null;
+
+        // rawMeta example: USER_REPORT|post:12|report:34|ly_do:SPAM|mo_ta:...
+        foreach (explode('|', $rawMeta) as $part) {
+            $part = trim($part);
+            if (str_starts_with($part, 'ly_do:')) {
+                $code = strtoupper(trim(substr($part, strlen('ly_do:'))));
+            }
+            if (str_starts_with($part, 'mo_ta:')) {
+                $userDesc = trim(substr($part, strlen('mo_ta:')));
+            }
+        }
+
+        $labels = [
+            'SPAM' => ['title' => 'Spam bài đăng', 'description' => 'Bài đăng này có dấu hiệu spam, vui lòng xem xét.'],
+            'LUA_DAO' => ['title' => 'Dấu hiệu lừa đảo', 'description' => 'Bài đăng này có dấu hiệu lừa đảo, vui lòng xem xét.'],
+            'NOI_DUNG_XAU' => ['title' => 'Nội dung xấu/không phù hợp', 'description' => 'Bài đăng có nội dung xấu/không phù hợp, vui lòng xem xét.'],
+            'KHAC' => ['title' => 'Lý do khác', 'description' => 'Lý do khác do người dùng cung cấp, cần admin xác minh.'],
+        ];
+
+        if ($code === null || !isset($labels[$code])) {
+            return [null, null, $code, $userDesc];
+        }
+
+        return [$labels[$code]['title'], $labels[$code]['description'], $code, $userDesc];
     }
 
     /**
