@@ -193,6 +193,7 @@ Route::middleware('update.campaign')->group(function () {
 });
 
 Route::post('/momo/ipn', [DonateController::class, 'momoIpn']);
+Route::get('/momo/return', [DonateController::class, 'momoReturn']);
 
 //xem profile người dùng khác
 Route::get('/profile/{id}', [UserProfileController::class, 'show']);

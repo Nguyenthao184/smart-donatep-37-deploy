@@ -83,7 +83,7 @@ class DonateController extends Controller
                 $amount = $request->so_tien;
 
                 $orderInfo = "Ung ho chien dich " . $campaign->id;
-                $redirectUrl = "https://smartdonate-phi.vercel.app/thanh-cong";
+                $redirectUrl = "https://smart-donatep-37-deploy-production.up.railway.app/api/momo/return";
                 $ipnUrl = "https://smart-donatep-37-deploy-production.up.railway.app/api/momo/ipn";
                 $extraData = "";
 
@@ -449,6 +449,102 @@ class DonateController extends Controller
         }
     }
 
+    public function momoReturn(Request $request)
+    {
+        \Log::info('MOMO RETURN', $request->all());
+
+        $orderId    = $request->orderId;
+        $resultCode = $request->resultCode;
+
+        $ungHo = DB::table('ung_ho')->where('payment_ref', $orderId)->first();
+
+        if (!$ungHo) {
+            return redirect()->away(env('FRONTEND_URL') . '/thanh-cong?status=failed&reason=not_found');
+        }
+
+        // Nếu IPN đã xử lý xong trước đó thì redirect luôn
+        if ($ungHo->trang_thai === 'THANH_CONG') {
+            return redirect()->away(
+                env('FRONTEND_URL') . '/thanh-cong?' . http_build_query($request->all())
+            );
+        }
+
+        if ($ungHo->trang_thai === 'THAT_BAI') {
+            return redirect()->away(
+                env('FRONTEND_URL') . '/thanh-cong?status=failed&orderId=' . $orderId
+            );
+        }
+
+        // Nếu MoMo báo thành công, cập nhật luôn (tránh race condition với IPN)
+        if ($resultCode == 0) {
+            DB::beginTransaction();
+            try {
+                $ungHoLocked = DB::table('ung_ho')
+                    ->where('id', $ungHo->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($ungHoLocked->trang_thai === 'CHO_XU_LY') {
+                    DB::table('ung_ho')->where('id', $ungHoLocked->id)->update([
+                        'trang_thai'              => 'THANH_CONG',
+                        'gateway_transaction_id'  => $request->transId ?? 'MOMO_RETURN_' . time(),
+                        'updated_at'              => now(),
+                    ]);
+
+                    $campaign = DB::table('chien_dich_gay_quy')
+                        ->where('id', $ungHoLocked->chien_dich_gay_quy_id)
+                        ->lockForUpdate()->first();
+
+                    $user = DB::table('nguoi_dung')
+                        ->where('id', $ungHoLocked->nguoi_dung_id)->first();
+
+                    $moTa = strtoupper(
+                        $campaign->ma_noi_dung_ck . ' ' .
+                        $this->removeVietnameseAccents($user->ho_ten) . ' UNG HO'
+                    );
+
+                    DB::table('giao_dich_quy')->insert([
+                        'tai_khoan_gay_quy_id' => $campaign->tai_khoan_gay_quy_id,
+                        'ung_ho_id'            => $ungHoLocked->id,
+                        'so_tien'              => $ungHoLocked->so_tien,
+                        'loai_giao_dich'       => 'UNG_HO',
+                        'mo_ta'                => $moTa,
+                        'created_at'           => now(),
+                    ]);
+
+                    DB::table('tai_khoan_gay_quy')
+                        ->where('id', $campaign->tai_khoan_gay_quy_id)
+                        ->increment('so_du', $ungHoLocked->so_tien);
+
+                    DB::table('chien_dich_gay_quy')
+                        ->where('id', $campaign->id)
+                        ->increment('so_tien_da_nhan', $ungHoLocked->so_tien);
+
+                    DB::commit();
+
+                    event(new DonationCreated(
+                        campaignId:   (int) $campaign->id,
+                        donationId:   (int) $ungHoLocked->id,
+                        donorUserId:  (int) $ungHoLocked->nguoi_dung_id,
+                    ));
+                } else {
+                    DB::rollBack();
+                }
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                \Log::error('MOMO RETURN ERROR', ['error' => $e->getMessage()]);
+            }
+
+            return redirect()->away(
+                env('FRONTEND_URL') . '/thanh-cong?' . http_build_query($request->all())
+            );
+        }
+
+        return redirect()->away(
+            env('FRONTEND_URL') . '/thanh-cong?status=failed&orderId=' . $orderId
+        );
+    }
+
     public function momoIpn(Request $request)
     {
         \Log::info('MOMO IPN', $request->all());
@@ -597,8 +693,16 @@ class DonateController extends Controller
             ->where('uh.id', $id)
             ->first();
 
-        if (!$data || $data->trang_thai !== 'THANH_CONG') {
-            return response()->json(['message' => 'Không hợp lệ'], 403);
+        if (!$data) {
+            return response()->json(['message' => 'Không tìm thấy giao dịch'], 404);
+        }
+
+        if ($data->trang_thai === 'CHO_XU_LY') {
+            return response()->json(['message' => 'Đang xử lý', 'trang_thai' => 'CHO_XU_LY'], 202);
+        }
+
+        if ($data->trang_thai !== 'THANH_CONG') {
+            return response()->json(['message' => 'Giao dịch không thành công', 'trang_thai' => $data->trang_thai], 400);
         }
 
         return response()->json([
