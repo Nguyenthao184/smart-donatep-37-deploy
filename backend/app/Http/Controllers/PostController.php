@@ -22,6 +22,7 @@ use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Notifications\ApprovalNotification;
 
 
 class PostController extends Controller
@@ -1275,65 +1276,65 @@ class PostController extends Controller
             'data' => $posts
         ]);
     }
-    // public function suspendByAdmin(Request $request, int $id)
-    // {
-    //     $request->validate([
-    //         'ly_do' => 'nullable|string|max:255|required_without:violation_reason',
-    //         'violation_reason' => 'nullable|array|required_without:ly_do',
-    //         'violation_reason.code' => 'nullable|string|max:100',
-    //         'violation_reason.title' => 'nullable|string|max:255',
-    //         'violation_reason.description' => 'nullable|string|max:255',
-    //         'mo_ta' => 'nullable|string|max:255',
-    //     ]);
+    public function suspendByAdmin(Request $request, int $id)
+    {
+        $request->validate([
+            'ly_do' => 'nullable|string|max:255|required_without:violation_reason',
+            'violation_reason' => 'nullable|array|required_without:ly_do',
+            'violation_reason.code' => 'nullable|string|max:100',
+            'violation_reason.title' => 'nullable|string|max:255',
+            'violation_reason.description' => 'nullable|string|max:255',
+            'mo_ta' => 'nullable|string|max:255',
+        ]);
 
-    //     $lyDoThongBao = $this->resolveViolationReasonText($request);
-    //     $post = BaiDang::query()->findOrFail($id);
-    //     if ($post->trang_thai === 'TAM_DUNG') {
-    //         return response()->json([
-    //             'message' => 'Bài đăng đã ở trạng thái tạm dừng.',
-    //         ], 422);
-    //     }
+        $lyDoThongBao = $this->resolveViolationReasonText($request);
+        $post = BaiDang::query()->findOrFail($id);
+        if ($post->trang_thai === 'TAM_DUNG') {
+            return response()->json([
+                'message' => 'Bài đăng đã ở trạng thái tạm dừng.',
+            ], 422);
+        }
 
-    //     $post->update(['trang_thai' => 'TAM_DUNG']);
+        $post->update(['trang_thai' => 'TAM_DUNG']);
 
-    //     $owner = User::query()->find((int) $post->nguoi_dung_id);
-    //     if ($owner) {
-    //         $owner->notify(new ApprovalNotification(
-    //             'lock',
-    //             'Bài đăng',
-    //             $lyDoThongBao,
-    //             'post',
-    //             (int) $post->id
-    //         ));
-    //     }
+        $owner = User::query()->find((int) $post->nguoi_dung_id);
+        if ($owner) {
+            $owner->notify(new ApprovalNotification(
+                'lock',
+                'Bài đăng',
+                $lyDoThongBao,
+                'post',
+                (int) $post->id
+            ));
+        }
 
-    //     return response()->json([
-    //         'message' => 'Đã tạm dừng bài đăng.',
-    //         'data' => [
-    //             'id' => (int) $post->id,
-    //             'trang_thai' => $post->trang_thai,
-    //         ],
-    //     ]);
-    // }
+        return response()->json([
+            'message' => 'Đã tạm dừng bài đăng.',
+            'data' => [
+                'id' => (int) $post->id,
+                'trang_thai' => $post->trang_thai,
+            ],
+        ]);
+    }
 
-    // private function resolveViolationReasonText(Request $request): string
-    // {
-    //     $lyDo = trim((string) $request->input('ly_do', ''));
-    //     $reason = $request->input('violation_reason');
-    //     $moTa = trim((string) $request->input('mo_ta', ''));
+    private function resolveViolationReasonText(Request $request): string
+    {
+        $lyDo = trim((string) $request->input('ly_do', ''));
+        $reason = $request->input('violation_reason');
+        $moTa = trim((string) $request->input('mo_ta', ''));
 
-    //     if (is_array($reason)) {
-    //         $parts = array_values(array_filter([
-    //             isset($reason['title']) ? trim((string) $reason['title']) : '',
-    //             isset($reason['description']) ? trim((string) $reason['description']) : '',
-    //             $moTa,
-    //         ]));
+        if (is_array($reason)) {
+            $parts = array_values(array_filter([
+                isset($reason['title']) ? trim((string) $reason['title']) : '',
+                isset($reason['description']) ? trim((string) $reason['description']) : '',
+                $moTa,
+            ]));
 
-    //         if ($parts !== []) {
-    //             return mb_substr(implode(' - ', $parts), 0, 255);
-    //         }
-    //     }
+            if ($parts !== []) {
+                return mb_substr(implode(' - ', $parts), 0, 255);
+            }
+        }
 
-    //     return mb_substr($lyDo !== '' ? $lyDo : $moTa, 0, 255);
-    // }
+        return mb_substr($lyDo !== '' ? $lyDo : $moTa, 0, 255);
+    }
 }

@@ -33,8 +33,8 @@ class CampaignFraudDemoSeeder extends Seeder
             'danh_muc_id' => $danhMuc->id,
             'tai_khoan_gay_quy_id' => $account->id,
             'hinh_anh' => json_encode([
-    'campaigns/moi_truong/moi_truong1.jpg'
-]),
+                'campaigns/moi_truong/moitruong11.jpg'
+            ]),
             'ten_chien_dich' => 'Campaign Fraud Demo',
             'mo_ta' => 'Campaign test AI fraud',
             'muc_tieu_tien' => 100000000,
@@ -113,8 +113,8 @@ class CampaignFraudDemoSeeder extends Seeder
             DB::table('chien_dich_gay_quy')->insert([
                 'to_chuc_id' => $org->id,
                 'hinh_anh' => json_encode([
-    'campaigns/moi_truong/moi_truong1.jpg'
-]),
+                    'campaigns/moi_truong/moitruong12.jpg'
+                ]),
                 'tai_khoan_gay_quy_id' =>  $account->id,
                 'danh_muc_id' => $danhMuc->id,
                 'ten_chien_dich' => 'Fake campaign ' . $i,
