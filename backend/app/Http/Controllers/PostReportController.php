@@ -157,7 +157,7 @@ class PostReportController extends Controller
     public function violationReasons()
     {
         $userReportReasons = collect(self::REPORT_REASON_LABELS)->map(
-            static fn (array $meta, string $code) => [
+            static fn(array $meta, string $code) => [
                 'code' => $code,
                 'title' => $meta['title'],
                 'description' => $meta['description'],
@@ -214,9 +214,12 @@ class PostReportController extends Controller
         $baoCao->update(['trang_thai' => $trangThaiMoi]);
 
         if ($trangThaiMoi === 'DA_XU_LY' && $baoCao->baiDang) {
-            $baoCao->baiDang->update(['trang_thai' => 'TAM_DUNG']);
-        }
 
+            // admin xác nhận VI PHẠM
+            $baoCao->baiDang->update([
+                'trang_thai' => 'TAM_DUNG'
+            ]);
+        }
         $this->syncFraudAlertWithAdminDecision($baoCao, $trangThaiMoi);
         $this->notifyUser($baoCao, $trangThaiMoi, $adminNote);
 
@@ -274,16 +277,22 @@ class PostReportController extends Controller
 
         if ($trangThaiBaoCao === 'DA_XU_LY') {
             $query->update([
+               
                 'trang_thai' => 'DA_XU_LY',
                 'decision' => 'VI_PHAM',
+                 'reviewed_at' => now(),
+                'admin_id' => auth()->id(),
             ]);
             return;
         }
 
         if ($trangThaiBaoCao === 'TU_CHOI') {
             $query->update([
+                
                 'trang_thai' => 'DA_XU_LY',
                 'decision' => 'KHONG_VI_PHAM',
+                'reviewed_at' => now(),
+                'admin_id' => auth()->id(),
             ]);
         }
     }
@@ -571,7 +580,7 @@ class PostReportController extends Controller
         ?string $description
     ): void {
         $admins = User::query()
-            ->whereHas('roles', fn ($q) => $q->where('ten_vai_tro', 'ADMIN'))
+            ->whereHas('roles', fn($q) => $q->where('ten_vai_tro', 'ADMIN'))
             ->get();
 
         foreach ($admins as $admin) {
@@ -603,7 +612,7 @@ class PostReportController extends Controller
             'TU_CHOI' => 'rejected',         // Báo cáo bị từ chối
             default => 'unknown',
         };
-    
+
         $user->notify(new UserViolationNotification(
             action: $action,
             targetType: 'post',

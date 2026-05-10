@@ -103,7 +103,7 @@ class BaiDangSeeder extends Seeder
         $rows = [];
         $now = now();
 
-        $count = 1000;
+        $count = 500;
 
         $imageMap = [
             'CHO' => [
