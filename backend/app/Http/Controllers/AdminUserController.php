@@ -22,8 +22,15 @@ class AdminUserController extends Controller
         $roleFilter = strtoupper((string) $request->query('role', ''));
         $statusFilter = strtoupper((string) $request->query('status', ''));
 
+        $isAdmin = auth()->check()
+            && auth()->user()
+            ->roles()
+            ->where('ten_vai_tro', 'ADMIN')
+            ->exists();
+        $maxPerPage = $isAdmin ? 9999 : 100;
+
         $perPage = (int) $request->query('per_page', 10);
-        $perPage = max(5, min($perPage, 100));
+        $perPage = max(5, min($perPage, $maxPerPage));
 
         $subQueryRole = DB::table('nguoi_dung_vai_tro as ndvt')
             ->join('vai_tro as vt', 'vt.id', '=', 'ndvt.vai_tro_id')
@@ -50,6 +57,10 @@ class AdminUserController extends Controller
 
         $query = User::query()
             ->leftJoinSub($subQueryRole, 'r', 'r.nguoi_dung_id', '=', 'nguoi_dung.id')
+            ->where(function ($q) {
+                $q->whereNull('r.primary_role')
+                    ->orWhere('r.primary_role', '!=', 'ADMIN');
+            })
             ->leftJoinSub($subQueryOrg, 'org', 'org.nguoi_dung_id', '=', 'nguoi_dung.id')
             ->leftJoinSub($subQueryViolation, 'v', 'v.nguoi_dung_id', '=', 'nguoi_dung.id')
             ->select(
@@ -214,11 +225,11 @@ class AdminUserController extends Controller
                 'ten_to_chuc' => $license->ten_to_chuc,
                 'ma_so_thue' => $license->ma_so_thue,
                 'nguoi_dai_dien' => $license->nguoi_dai_dien,
-                'giay_phep' => secure_asset('storage/' . $license->giay_phep),
+                'giay_phep' => asset('storage/' . $license->giay_phep),
                 'mo_ta' => $license->mo_ta,
                 'dia_chi' => $license->dia_chi,
                 'so_dien_thoai' => $license->so_dien_thoai,
-                'logo' => $license->logo ? secure_asset('storage/' . $license->logo) : null,
+                'logo' => $license->logo ? asset('storage/' . $license->logo) : null,
                 'loai_hinh' => $license->loai_hinh,
                 'trang_thai' => $license->trang_thai,
                 'created_at' => $license->created_at,

@@ -170,8 +170,15 @@ class FraudController extends Controller
         $mucRuiRoLoc = strtoupper((string)$request->query('risk', ''));
         $trangThaiLoc = strtoupper((string)$request->query('trang_thai', ''));
         $nguoiDungIdLoc = $request->query('user_id');
+        $isAdmin = auth()->check()
+    && auth()->user()
+        ->roles()
+        ->where('ten_vai_tro', 'ADMIN')
+        ->exists();
+        $maxLimit = $isAdmin ? 9999 : 100;
+
         $gioiHan = (int)$request->query('limit', 20);
-        $gioiHan = max(1, min($gioiHan, 100));
+        $gioiHan = max(1, min($gioiHan, $maxLimit));
 
         $truyVan = CanhBaoGianLan::query()->orderByDesc('created_at');
         if (in_array($mucRuiRoLoc, ['HIGH', 'MEDIUM', 'LOW'], true)) {
@@ -419,33 +426,33 @@ class FraudController extends Controller
     private function getCampaignFraudReasons(array $muc_dac_trung): array
     {
         $ly_do = [];
-        
+
         $soChienDich = (float) ($muc_dac_trung['campaigns_per_user'] ?? 0);
         $tangTruong = max(0.0, (float) ($muc_dac_trung['donation_growth'] ?? 0));
         $tiLeTu = (float) ($muc_dac_trung['self_donation_ratio'] ?? 0);
-        $soNguoi = (float) ($muc_dac_trung['unique_donors'] ?? 0);  
+        $soNguoi = (float) ($muc_dac_trung['unique_donors'] ?? 0);
         $tanSuat = (float) ($muc_dac_trung['donation_frequency'] ?? 0);
-    
+
         if ($soChienDich >= 4) {
             $ly_do[] = 'Nhiều chiến dịch cùng tổ chức';
         }
-    
+
         if ($tangTruong >= 200) {
             $ly_do[] = 'Tăng ủng hộ bất thường (chiến dịch)';
         }
-    
+
         if ($tiLeTu >= 0.5) {
             $ly_do[] = 'Tỷ lệ tự ủng hộ cao';
         }
-    
+
         if ($soNguoi > 0 && $soNguoi <= 3) {
             $ly_do[] = 'Ít người ủng hộ';
         }
-    
+
         if ($tanSuat >= 8) {
             $ly_do[] = 'Ủng hộ dày đặc (7 ngày gần đây)';
         }
-    
+
         return $ly_do;
     }
 

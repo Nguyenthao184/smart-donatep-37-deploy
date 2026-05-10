@@ -20,7 +20,7 @@ class ChiTieuChienDichSeeder extends Seeder
 
         if ($campaigns->isEmpty()) return;
 
-       $selectedCampaigns = $campaigns->random(min(10, $campaigns->count()));
+       $selectedCampaigns = $campaigns;
 
         $danhMucs = DB::table('danh_muc')->pluck('ten_danh_muc', 'id');
 

@@ -111,85 +111,56 @@ class ChienDichGayQuySeeder extends Seeder
             ->where('tai_khoan_gay_quy.trang_thai', 'HOAT_DONG')
             ->get();
 
-        $locations = [
-            // ===== ĐÀ NẴNG =====
-            ['address' => '12 Bạch Đằng, Hải Châu, Đà Nẵng', 'lat' => 16.0703, 'lng' => 108.2240],
-            ['address' => '45 Nguyễn Văn Linh, Hải Châu, Đà Nẵng', 'lat' => 16.0605, 'lng' => 108.2140],
-            ['address' => '78 Võ Nguyên Giáp, Sơn Trà, Đà Nẵng', 'lat' => 16.0825, 'lng' => 108.2473],
-            ['address' => '22 Lê Duẩn, Hải Châu, Đà Nẵng', 'lat' => 16.0678, 'lng' => 108.2152],
-            ['address' => '90 Trần Phú, Hải Châu, Đà Nẵng', 'lat' => 16.0709, 'lng' => 108.2215],
-            ['address' => '5 Phạm Văn Đồng, Sơn Trà, Đà Nẵng', 'lat' => 16.0758, 'lng' => 108.2305],
-            ['address' => '33 Hoàng Diệu, Hải Châu, Đà Nẵng', 'lat' => 16.0643, 'lng' => 108.2159],
-            ['address' => '101 Nguyễn Hữu Thọ, Hải Châu, Đà Nẵng', 'lat' => 16.0512, 'lng' => 108.2025],
-            ['address' => '64 Điện Biên Phủ, Thanh Khê, Đà Nẵng', 'lat' => 16.0700, 'lng' => 108.2020],
-            ['address' => '200 Ngô Quyền, Sơn Trà, Đà Nẵng', 'lat' => 16.0810, 'lng' => 108.2380],
-
-            // ===== HÀ NỘI =====
-            ['address' => '10 Tràng Tiền, Hoàn Kiếm, Hà Nội', 'lat' => 21.0245, 'lng' => 105.8560],
-            ['address' => '45 Trần Phú, Ba Đình, Hà Nội', 'lat' => 21.0313, 'lng' => 105.8381],
-            ['address' => '120 Xuân Thủy, Cầu Giấy, Hà Nội', 'lat' => 21.0365, 'lng' => 105.7820],
-            ['address' => '88 Nguyễn Trãi, Thanh Xuân, Hà Nội', 'lat' => 20.9980, 'lng' => 105.8090],
-            ['address' => '15 Láng Hạ, Đống Đa, Hà Nội', 'lat' => 21.0170, 'lng' => 105.8120],
-            ['address' => '60 Kim Mã, Ba Đình, Hà Nội', 'lat' => 21.0305, 'lng' => 105.8165],
-            ['address' => '200 Cầu Giấy, Cầu Giấy, Hà Nội', 'lat' => 21.0330, 'lng' => 105.8000],
-            ['address' => '25 Hai Bà Trưng, Hoàn Kiếm, Hà Nội', 'lat' => 21.0285, 'lng' => 105.8500],
-            ['address' => '300 Nguyễn Văn Cừ, Long Biên, Hà Nội', 'lat' => 21.0450, 'lng' => 105.8800],
-            ['address' => '18 Phạm Hùng, Nam Từ Liêm, Hà Nội', 'lat' => 21.0280, 'lng' => 105.7760],
-
-            // ===== TP.HCM =====
-            ['address' => '200 Lê Lợi, Quận 1, TP.HCM', 'lat' => 10.7769, 'lng' => 106.7009],
-            ['address' => '50 Nguyễn Huệ, Quận 1, TP.HCM', 'lat' => 10.7745, 'lng' => 106.7040],
-            ['address' => '100 Điện Biên Phủ, Bình Thạnh, TP.HCM', 'lat' => 10.8003, 'lng' => 106.7100],
-            ['address' => '75 Cách Mạng Tháng 8, Quận 3, TP.HCM', 'lat' => 10.7790, 'lng' => 106.6870],
-            ['address' => '300 Trường Chinh, Tân Bình, TP.HCM', 'lat' => 10.8060, 'lng' => 106.6350],
-            ['address' => '150 Phan Xích Long, Phú Nhuận, TP.HCM', 'lat' => 10.8000, 'lng' => 106.6800],
-            ['address' => '20 Nguyễn Thị Minh Khai, Quận 1, TP.HCM', 'lat' => 10.7870, 'lng' => 106.7010],
-            ['address' => '90 Lý Thường Kiệt, Quận 10, TP.HCM', 'lat' => 10.7700, 'lng' => 106.6600],
-            ['address' => '210 Võ Văn Ngân, Thủ Đức, TP.HCM', 'lat' => 10.8500, 'lng' => 106.7700],
-            ['address' => '60 Nguyễn Văn Linh, Quận 7, TP.HCM', 'lat' => 10.7300, 'lng' => 106.7200],
-
-            // ===== CẦN THƠ =====
-            ['address' => '10 Ninh Kiều, Cần Thơ', 'lat' => 10.0340, 'lng' => 105.7870],
-            ['address' => '50 Trần Văn Khéo, Ninh Kiều, Cần Thơ', 'lat' => 10.0330, 'lng' => 105.7800],
-            ['address' => '120 30/4, Ninh Kiều, Cần Thơ', 'lat' => 10.0300, 'lng' => 105.7700],
-            ['address' => '80 Nguyễn Văn Linh, Cần Thơ', 'lat' => 10.0280, 'lng' => 105.7600],
-            ['address' => '25 Lý Tự Trọng, Cần Thơ', 'lat' => 10.0350, 'lng' => 105.7850],
-
-            // ===== HUẾ =====
-            ['address' => '20 Hùng Vương, Huế', 'lat' => 16.4637, 'lng' => 107.5909],
-            ['address' => '50 Lê Lợi, Huế', 'lat' => 16.4660, 'lng' => 107.5930],
-            ['address' => '100 Nguyễn Huệ, Huế', 'lat' => 16.4700, 'lng' => 107.5800],
-            ['address' => '12 Phạm Ngũ Lão, Huế', 'lat' => 16.4665, 'lng' => 107.5950],
-            ['address' => '70 Trần Hưng Đạo, Huế', 'lat' => 16.4650, 'lng' => 107.6000],
-
-            // ===== HẢI PHÒNG =====
-            ['address' => '10 Lạch Tray, Hải Phòng', 'lat' => 20.8440, 'lng' => 106.6880],
-            ['address' => '50 Cầu Đất, Hải Phòng', 'lat' => 20.8600, 'lng' => 106.6800],
-            ['address' => '100 Trần Nguyên Hãn, Hải Phòng', 'lat' => 20.8500, 'lng' => 106.6700],
-            ['address' => '25 Điện Biên Phủ, Hải Phòng', 'lat' => 20.8550, 'lng' => 106.6900],
-            ['address' => '60 Nguyễn Văn Linh, Hải Phòng', 'lat' => 20.8400, 'lng' => 106.7000],
-
-            // ===== NHA TRANG =====
-            ['address' => '10 Trần Phú, Nha Trang', 'lat' => 12.2388, 'lng' => 109.1967],
-            ['address' => '50 Nguyễn Thị Minh Khai, Nha Trang', 'lat' => 12.2400, 'lng' => 109.1900],
-            ['address' => '100 Lê Hồng Phong, Nha Trang', 'lat' => 12.2500, 'lng' => 109.1800],
-            ['address' => '25 Hùng Vương, Nha Trang', 'lat' => 12.2350, 'lng' => 109.1950],
-            ['address' => '80 2/4, Nha Trang', 'lat' => 12.2600, 'lng' => 109.2000],
-
+        // Mỗi chiến dịch một tỉnh/thành khác nhau (17 địa điểm / 17 chiến dịch)
+        $diaDiemTheoTinh = [
+            ['tinh' => 'Đà Nẵng', 'address' => '12 Bạch Đằng, Hải Châu, Đà Nẵng', 'lat' => 16.080083723726315, 'lng' => 108.22348595962076],
+            ['tinh' => 'Hà Nội', 'address' => '10 Tràng Tiền, Hoàn Kiếm, Hà Nội', 'lat' => 21.02493252622818, 'lng' => 105.85632417493993],
+            ['tinh' => 'TP.HCM', 'address' => '36 Bis/1 Lê Lợi, Sài Gòn, Hồ Chí Minh', 'lat' => 10.774839611501271, 'lng' => 106.70037501521871],
+            ['tinh' => 'Cần Thơ', 'address' => '3 Đ. Hai Bà Trưng, Ninh Kiều, Cần Thơ', 'lat' => 10.02908890925625, 'lng' => 105.78735255279162],
+            ['tinh' => 'Huế', 'address' => '20 Hùng Vương, Thuận Hóa, Huế', 'lat' => 16.464980313129036, 'lng' => 107.59326823034212],
+            ['tinh' => 'Hải Phòng', 'address' => '80 Lạch Tray, Lê Chân, Hải Phòng', 'lat' => 20.84812565823585, 'lng' => 106.69039821535124],
+            ['tinh' => 'Khánh Hòa', 'address' => '18 Trần Phú, Nha Trang, Khánh Hòa', 'lat' => 12.241647983355051, 'lng' => 109.19622384681318],
+            ['tinh' => 'Lâm Đồng', 'address' => '1 Trần Hưng Đạo, Đức Trọng, Lâm Đồng', 'lat' => 11.728826640127052, 'lng' => 108.37595437192351],
+            ['tinh' => 'Bà Rịa – Vũng Tàu', 'address' => '9 Thùy Vân, Vũng Tàu, Hồ Chí Minh', 'lat' => 10.346926286402653, 'lng' => 107.09490488741146],
+            ['tinh' => 'Đồng Nai', 'address' => '45 Đ. Đồng Khởi, Trảng Dài, Đồng Nai', 'lat' => 10.968184167389634, 'lng' => 106.85385455961793],
+            ['tinh' => 'Bình Định', 'address' => '88 Nguyễn Tất Thành, Quy Nhơn, Bình Định', 'lat' => 13.778639356424122, 'lng' => 109.22200717047896],
+            ['tinh' => 'Nghệ An', 'address' => '72 V.I Lê Nin, Vinh Phú, Nghệ An', 'lat' => 18.68739742875626, 'lng' => 105.69193703392024],
+            ['tinh' => 'Thái Nguyên', 'address' => '45 Hoàng Văn Thụ, Đức Xuân, Thái Nguyên', 'lat' => 22.167287997559278, 'lng' => 105.84749607330919],
+            ['tinh' => 'Ninh Bình', 'address' => '12 Điện Biên, Nam Định, Ninh Bình', 'lat' => 20.429051513906348, 'lng' => 106.16834996157536],
+            ['tinh' => 'Đắk Lắk', 'address' => '55 Nguyễn Tất Thành, Buôn Ma Thuột, Đắk Lắk', 'lat' => 12.685824013653367, 'lng' => 108.05291117245118],
+            ['tinh' => 'Gia Lai', 'address' => '18 Hùng Vương, Phú Túc, Gia Lai', 'lat' => 13.196386529837053, 'lng' => 108.68700429100097],
+            ['tinh' => 'An Giang', 'address' => '22 Trần Hưng Đạo, Long Xuyên, An Giang', 'lat' => 10.35930399746741, 'lng' => 105.4550496854255],
         ];
-        $shuffledLocations = collect($locations)->shuffle();
-        $index = 0;
-        foreach ($orgs as $org) {
+
+        // 12 chiến hoạt động + mỗi trạng thái khác đúng 1 chiến
+        $keHoachTrangThai = array_merge(
+            array_fill(0, 12, 'HOAT_DONG'),
+            ['TAM_DUNG', 'DA_KET_THUC', 'HOAN_THANH', 'CHO_XU_LY', 'TU_CHOI'],
+        );
+
+        $orgList = $orgs->values();
+        $orgCount = $orgList->count();
+        if ($orgCount === 0) {
+            return;
+        }
+
+        for ($slot = 0; $slot < count($diaDiemTheoTinh); $slot++) {
+            $org = $orgList[$slot % $orgCount];
+
             // lấy danh mục theo tổ chức
             $categoryName = $orgCategoryMap[$org->ten_to_chuc] ?? null;
-            if (!$categoryName) continue;
+            if (!$categoryName) {
+                continue;
+            }
 
             // lấy danh mục trong DB
             $danhMuc = DB::table('danh_muc')
                 ->where('ten_danh_muc', $categoryName)
                 ->first();
 
-            if (!$danhMuc) continue;
+            if (!$danhMuc) {
+                continue;
+            }
 
             // lấy folder ảnh
             $folder = $folderMap[$categoryName] ?? null;
@@ -205,50 +176,42 @@ class ChienDichGayQuySeeder extends Seeder
                 ];
             }
 
-            // tạo 10 campaign
-            for ($i = 0; $i < 10; $i++) {
-                $location = $shuffledLocations[$index % $shuffledLocations->count()];
-                $index++;
+            $location = $diaDiemTheoTinh[$slot];
 
-                // Tổng số ảnh trong folder
-                $totalFiles = count($files);
+            // Tổng số ảnh trong folder
+            $totalFiles = count($files);
 
-                // Lấy ảnh đầu tiên KHÔNG TRÙNG theo index
-                $firstImage = $files[$i % $totalFiles];
+            // Lấy ảnh đầu tiên KHÔNG TRÙNG theo index
+            $firstImage = $files[$slot % $totalFiles];
 
-                // Lấy thêm 1–4 ảnh random khác (không trùng ảnh đầu)
-                $otherCount = rand(2, 3);
-                $otherImages = collect($files)
-                    ->reject(fn($f) => $f === $firstImage)
-                    ->shuffle()
-                    ->take(min($otherCount, $totalFiles - 1));
+            // tối đa 4 ảnh / chiến dịch
+            $maxImages = min(4, $totalFiles);
 
-                $images = collect([$firstImage])
-                    ->merge($otherImages)
-                    ->values()
-                    ->toArray();
+            // luôn có ảnh đầu tiên
+            $remainingSlots = $maxImages - 1;
 
-                // mục tiêu tiền
-                $rand = rand(1, 100);
-                if ($rand <= 50) {
-                    $mucTieu = rand(500, 1000) * 1000000;
-                } elseif ($rand <= 80) {
-                    $mucTieu = rand(1000, 2000) * 1000000;
-                } else {
-                    $mucTieu = rand(2000, 5000) * 1000000;
-                }
+            // lấy thêm ảnh khác không trùng
+            $otherImages = collect($files)
+                ->reject(fn ($f) => $f === $firstImage)
+                ->shuffle()
+                ->take($remainingSlots);
 
-                $statuses = array_merge(
-                    array_fill(0, 55, 'HOAT_DONG'),
-                    array_fill(0, 10, 'TAM_DUNG'),
-                    array_fill(0, 10, 'DA_KET_THUC'),
-                    array_fill(0, 15, 'HOAN_THANH'),
-                    array_fill(0, 5, 'CHO_XU_LY'),
-                    array_fill(0, 5, 'TU_CHOI'),
-                );
+            $images = collect([$firstImage])
+                ->merge($otherImages)
+                ->values()
+                ->toArray();
 
-                $trangThai = $statuses[array_rand($statuses)];
+            // mục tiêu tiền
+            $rand = rand(1, 100);
+            if ($rand <= 50) {
+                $mucTieu = rand(500, 1000) * 1000000;
+            } elseif ($rand <= 80) {
+                $mucTieu = rand(1000, 2000) * 1000000;
+            } else {
+                $mucTieu = rand(2000, 5000) * 1000000;
+            }
 
+            $trangThai = $keHoachTrangThai[$slot];
                 switch ($trangThai) {
                     case 'HOAT_DONG':
                         // đang chạy → ngày kết thúc ở tương lai
@@ -292,7 +255,7 @@ class ChienDichGayQuySeeder extends Seeder
                         break;
                 }
 
-                $tenChienDich = $nameTemplates[$categoryName][$i] ?? "Chung tay vì cộng đồng";
+                $tenChienDich = collect($nameTemplates[$categoryName])->random();
 
                 $descriptions = [
                     "Chiến dịch nhằm hỗ trợ {$categoryName} tại khu vực {$location['address']}. Chúng tôi kêu gọi sự chung tay từ cộng đồng để mang lại những giá trị thiết thực như hỗ trợ tài chính, cung cấp nhu yếu phẩm và cải thiện điều kiện sống cho những hoàn cảnh khó khăn. Mỗi đóng góp, dù nhỏ, đều góp phần tạo nên sự thay đổi tích cực và lan tỏa yêu thương trong xã hội.",
@@ -341,7 +304,6 @@ class ChienDichGayQuySeeder extends Seeder
                     'created_at' => $createdAt,
                     'updated_at' => $createdAt,
                 ]);
-            }
         }
     }
 }

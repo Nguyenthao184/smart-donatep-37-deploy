@@ -17,12 +17,13 @@ use App\Models\DanhMucBaiDang;
 use App\Models\ThichBaiDang;
 use App\Jobs\FindPostMatches;
 use App\Models\User;
+use App\Models\CanhBaoGianLan;
+use App\Notifications\ApprovalNotification;
 use App\Notifications\BaiDangDuocThichNotification;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Notifications\ApprovalNotification;
 
 
 class PostController extends Controller
@@ -65,8 +66,16 @@ class PostController extends Controller
 
     public function index(Request $request)
     {
+        $isAdmin = auth()->check()
+            && auth()->user()
+            ->roles()
+            ->where('ten_vai_tro', 'ADMIN')
+            ->exists();
+
+        $maxPerPage = $isAdmin ? 9999 : 50;
+
         $perPage = (int) $request->query('per_page', 10);
-        $perPage = max(1, min($perPage, 50));
+        $perPage = max(1, min($perPage, $maxPerPage));
 
         $keyword = trim((string) $request->query('keyword', ''));
         $loaiBai = strtoupper((string) $request->query('loai_bai', ''));
@@ -1286,7 +1295,7 @@ class PostController extends Controller
             'violation_reason.description' => 'nullable|string|max:255',
             'mo_ta' => 'nullable|string|max:255',
         ]);
-
+        
         $lyDoThongBao = $this->resolveViolationReasonText($request);
         $post = BaiDang::query()->findOrFail($id);
         if ($post->trang_thai === 'TAM_DUNG') {
@@ -1296,7 +1305,15 @@ class PostController extends Controller
         }
 
         $post->update(['trang_thai' => 'TAM_DUNG']);
-
+        CanhBaoGianLan::where('target_type', 'post')
+            ->where('target_id', $post->id)
+            ->where('trang_thai', 'CHO_XU_LY')
+            ->update([
+                'trang_thai' => 'DA_XU_LY',
+                'decision' => 'VI_PHAM',
+                'reviewed_at' => now(),
+                'admin_id' => auth()->id(),
+            ]);
         $owner = User::query()->find((int) $post->nguoi_dung_id);
         if ($owner) {
             $owner->notify(new ApprovalNotification(
