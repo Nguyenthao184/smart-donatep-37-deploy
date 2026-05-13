@@ -58,7 +58,7 @@ class UngHoSeeder extends Seeder
                         'phuong_thuc_thanh_toan' => 'vnpay',
                         'trang_thai' => 'THANH_CONG',
                         'payment_ref' => Str::uuid(),
-                        'vnp_transaction_no' => rand(10000000, 99999999),
+                        'gateway_transaction_id' => rand(10000000, 99999999),
                         'created_at' => now()->subDays(rand(0, 5)),
                         'updated_at' => now(),
                     ]);
@@ -101,15 +101,28 @@ class UngHoSeeder extends Seeder
 
                 $tong += $soTien;
 
-                // thời gian
-                $createdAt = Carbon::now()
-                    ->subDays(rand(0, 30))
-                    ->setHour(rand(0, 23))
-                    ->setMinute(rand(0, 59));
+                // thời gian ủng hộ trải đều trong thời gian campaign
+                $startDate = Carbon::parse($campaign->created_at);
 
-                if ($createdAt > now()) {
-                    $createdAt = now();
+                // không vượt hiện tại
+                $endDate = Carbon::parse($campaign->ngay_ket_thuc);
+
+                if ($endDate->gt(now())) {
+                    $endDate = now();
                 }
+
+                // nếu end < start thì fallback
+                if ($endDate->lt($startDate)) {
+                    $endDate = $startDate->copy()->addDays(1);
+                }
+
+                // random timestamp trong khoảng
+                $randomTimestamp = rand(
+                    $startDate->timestamp,
+                    $endDate->timestamp
+                );
+
+                $createdAt = Carbon::createFromTimestamp($randomTimestamp);
 
                 $method = rand(0, 1) ? 'vnpay' : 'momo';
 

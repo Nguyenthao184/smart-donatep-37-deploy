@@ -33,9 +33,9 @@ class CampaignFraudDemoSeeder extends Seeder
             'danh_muc_id' => $danhMuc->id,
             'tai_khoan_gay_quy_id' => $account->id,
             'hinh_anh' => json_encode([
-                'campaigns/moi_truong/moitruong11.jpg'
+                'campaigns/thien_tai/thientai6.jpeg'
             ]),
-            'ten_chien_dich' => 'Campaign Fraud Demo',
+            'ten_chien_dich' => 'Chung sức khắc phục hậu quả thiên tai',
             'mo_ta' => 'Campaign test AI fraud',
             'muc_tieu_tien' => 100000000,
             'so_tien_da_nhan' => 0,
@@ -109,15 +109,23 @@ class CampaignFraudDemoSeeder extends Seeder
                 'updated_at' => now(),
             ]);
         }
+
+        $campaignNames = [
+            'Hành trình cứu trợ đến vùng lũ khó khăn',
+            'Hỗ trợ tái thiết sau thiên tai cho người dân',
+            'Chia sẻ yêu thương đến vùng bị thiên tai',
+            'Tiếp tế khẩn cấp cho người dân vùng lũ',
+        ];
+
         for ($i = 0; $i < 4; $i++) {
             DB::table('chien_dich_gay_quy')->insert([
                 'to_chuc_id' => $org->id,
                 'hinh_anh' => json_encode([
-                    'campaigns/moi_truong/moitruong12.jpg'
+                    'campaigns/thien_tai/thientai' . (7 + $i) . '.jpg'
                 ]),
                 'tai_khoan_gay_quy_id' =>  $account->id,
                 'danh_muc_id' => $danhMuc->id,
-                'ten_chien_dich' => 'Fake campaign ' . $i,
+                'ten_chien_dich' => $campaignNames[$i],
                 'vi_tri' => 'TP Hồ Chí Minh',
                 'lat' => 10.7769,
                 'lng' => 106.7009,

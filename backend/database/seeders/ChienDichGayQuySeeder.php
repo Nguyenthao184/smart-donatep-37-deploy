@@ -169,6 +169,8 @@ class ChienDichGayQuySeeder extends Seeder
                 ? Storage::disk('public')->files("campaigns/$folder")
                 : [];
 
+            sort($files);
+            
             // fallback nếu folder rỗng
             if (empty($files)) {
                 $files = [
@@ -215,47 +217,51 @@ class ChienDichGayQuySeeder extends Seeder
                 switch ($trangThai) {
                     case 'HOAT_DONG':
                         // đang chạy → ngày kết thúc ở tương lai
-                        $createdAt = now()->subDays(rand(1, 10));
-                        $ngayKetThuc = now()->addDays(rand(1, 30));
+                        $createdAt = now()->subDays(rand(30, 120));
+                        $ngayKetThuc = now()->addDays(rand(15, 90));
                         break;
 
                     case 'TAM_DUNG':
                         // tạm dừng nhưng chưa hết hạn
-                        $createdAt = now()->subDays(rand(5, 20));
-                        $ngayKetThuc = now()->addDays(rand(5, 20));
+                        $createdAt = now()->subDays(rand(60, 180));
+                        $ngayKetThuc = now()->addDays(rand(15, 60));
                         break;
 
                     case 'CHO_XU_LY':
                         // mới tạo → còn hạn xa
-                        $createdAt = now()->subDays(rand(0, 2));
-                        $ngayKetThuc = now()->addDays(rand(10, 40));
+                        $createdAt = now()->subDays(rand(1, 7));
+                        $ngayKetThuc = now()->addDays(rand(60, 180));
                         break;
 
                     case 'DA_KET_THUC':
                         // đã kết thúc → ngày trong quá khứ
-                        $ngayKetThuc = now()->subDays(rand(1, 10));
-                        $createdAt = (clone $ngayKetThuc)->subDays(rand(10, 30));
+                        $ngayKetThuc = now()->subDays(rand(5, 30));
+                        $createdAt = (clone $ngayKetThuc)
+                            ->subDays(rand(60, 180));
                         break;
 
                     case 'HOAN_THANH':
-                        // hoàn thành sớm → vẫn là quá khứ
-                        $ngayKetThuc = now()->subDays(rand(1, 5));
-                        $createdAt = (clone $ngayKetThuc)->subDays(rand(5, 20));
+                        // hoàn thành sớm trước hạn
+                        $createdAt = now()->subDays(rand(60, 150));
+                        // deadline vẫn còn
+                        $ngayKetThuc = now()->addDays(rand(15, 90));
                         break;
 
                     case 'TU_CHOI':
-                        // bị từ chối → có thể chưa tới hạn hoặc vừa tạo
-                        $createdAt = now()->subDays(rand(0, 5));
-                        $ngayKetThuc = now()->addDays(rand(5, 15));
+                        $createdAt = now()->subDays(rand(1, 15));
+                        $ngayKetThuc = now()->addDays(rand(30, 90));
                         break;
 
                     default:
-                        $createdAt = now()->subDays(3);
-                        $ngayKetThuc = now()->addDays(10);
+                        $createdAt = now()->subDays(rand(30, 60));
+                        $ngayKetThuc = now()->addDays(rand(30, 60));
                         break;
                 }
 
-                $tenChienDich = collect($nameTemplates[$categoryName])->random();
+                $templates = $nameTemplates[$categoryName];
+                $tenChienDich = $templates[
+                    $slot % count($templates)
+                ];
 
                 $descriptions = [
                     "Chiến dịch nhằm hỗ trợ {$categoryName} tại khu vực {$location['address']}. Chúng tôi kêu gọi sự chung tay từ cộng đồng để mang lại những giá trị thiết thực như hỗ trợ tài chính, cung cấp nhu yếu phẩm và cải thiện điều kiện sống cho những hoàn cảnh khó khăn. Mỗi đóng góp, dù nhỏ, đều góp phần tạo nên sự thay đổi tích cực và lan tỏa yêu thương trong xã hội.",

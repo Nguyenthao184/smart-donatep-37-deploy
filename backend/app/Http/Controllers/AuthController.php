@@ -210,7 +210,8 @@ class AuthController extends Controller
         return response()->json([
             'user' => $user,
             'roles' => $user->roles->pluck('ten_vai_tro'),
-            'has_password' => $user->mat_khau ? true : false
+            'has_password' => $user->mat_khau ? true : false,
+            'can_show_address_popup' => !$user->da_hien_popup_dia_chi,
         ]);
     }
 

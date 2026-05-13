@@ -74,7 +74,7 @@ class PostController extends Controller
 
         $maxPerPage = $isAdmin ? 9999 : 50;
 
-        $perPage = (int) $request->query('per_page', 10);
+        $perPage = (int) $request->query('per_page', 6);
         $perPage = max(1, min($perPage, $maxPerPage));
 
         $keyword = trim((string) $request->query('keyword', ''));
@@ -343,7 +343,7 @@ class PostController extends Controller
             $trangThai = strtoupper(trim($trangThai));
         }
 
-        $perPage = (int) $request->query('per_page', 12);
+        $perPage = (int) $request->query('per_page', 6);
         $perPage = max(1, min($perPage, 50));
 
         $query = BaiDang::query()
