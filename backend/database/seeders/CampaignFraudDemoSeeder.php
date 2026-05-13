@@ -44,7 +44,7 @@ class CampaignFraudDemoSeeder extends Seeder
             'lng' => 106.7009,
             'ma_noi_dung_ck' => 'CK-' . strtoupper(Str::random(8)),
             'trang_thai' => 'HOAT_DONG',
-            'ngay_ket_thuc' => now()->addDays(30),
+            'ngay_ket_thuc' => now()->addDays(120),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -131,14 +131,11 @@ class CampaignFraudDemoSeeder extends Seeder
                 'updated_at' => now(),
             ]);
         }
-        $tong = DB::table('ung_ho')
-            ->where('chien_dich_gay_quy_id', $campaign->id)
-            ->sum('so_tien');
-
+        
         DB::table('chien_dich_gay_quy')
             ->where('id', $campaign->id)
             ->update([
-                'so_tien_da_nhan' => 0,
+                'so_tien_da_nhan' => 3500000,
             ]);
 
         app(CampaignFraudDetectionService::class)
