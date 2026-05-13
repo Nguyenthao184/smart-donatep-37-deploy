@@ -92,14 +92,16 @@ class PostController extends Controller
                     ->orWhere('mo_ta', 'like', "%$keyword%");
             });
         }
-        $query->orderByRaw('
-            CASE 
-                WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 1000
-                WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 100
-                ELSE 0
-            END DESC
-            ')
-            ->orderByRaw('RAND()');
+        $query
+    ->orderByRaw("
+        CASE 
+            WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 3
+            WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 2
+            ELSE 1
+        END DESC
+    ")
+    ->latest('created_at')
+    ->inRandomOrder();
         $posts = $query->paginate($perPage);
         $currentUserId = Auth::id();
 
@@ -469,19 +471,20 @@ class PostController extends Controller
 
         $data['nguoi_dung_id'] = $userId;
 
-        $hinhAnhPaths = [];
-        $files = $request->file('hinh_anh');
-        if ($files) {
-            $files = is_array($files) ? $files : [$files];
-            foreach ($files as $f) {
-                $pathOrUrl = $this->uploadPostImageOrFallback($f);
-                if (is_string($pathOrUrl) && $pathOrUrl !== '') {
-                    $hinhAnhPaths[] = $pathOrUrl;
-                }
-            }
-        }
+        // $hinhAnhPaths = [];
+        // $files = $request->file('hinh_anh');
+        // if ($files) {
+        //     $files = is_array($files) ? $files : [$files];
+        //     foreach ($files as $f) {
+        //         $pathOrUrl = $this->uploadPostImageOrFallback($f);
+        //         if (is_string($pathOrUrl) && $pathOrUrl !== '') {
+        //             $hinhAnhPaths[] = $pathOrUrl;
+        //         }
+        //     }
+        // }
+         $hinhAnhPaths = $request->input('hinh_anh', []);
         $data['hinh_anh'] = $hinhAnhPaths === [] ? null : $hinhAnhPaths;
-
+        
         $post = BaiDang::create($data);
 
         $gService = app(DanhMucSuggestionService::class);

@@ -22,13 +22,14 @@ class StorePostRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+         return [
             'loai_bai' => 'required|in:CHO,NHAN',
             'tieu_de' => 'required|string|max:255',
             'mo_ta' => 'required|string|max:5000',
             // multiple images: hinh_anh[] (max 6)
             'hinh_anh' => 'nullable|array|max:6',
-            'hinh_anh.*' => 'file|mimes:jpg,jpeg,png,webp|max:5120',
+            // 'hinh_anh.*' => 'file|mimes:jpg,jpeg,png,webp|max:5120',
+            'hinh_anh.*' => 'string',
             // dia_diem: địa chỉ user nhập để hiển thị (đường/quận/tỉnh...).
             // Nếu không gửi lat/lng thì bắt buộc dia_diem phải đủ chi tiết.
             'dia_diem' => [
