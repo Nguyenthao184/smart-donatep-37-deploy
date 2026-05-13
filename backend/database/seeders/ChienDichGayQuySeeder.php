@@ -169,6 +169,8 @@ class ChienDichGayQuySeeder extends Seeder
                 ? Storage::disk('public')->files("campaigns/$folder")
                 : [];
 
+            sort($files);
+            
             // fallback nếu folder rỗng
             if (empty($files)) {
                 $files = [
@@ -256,7 +258,10 @@ class ChienDichGayQuySeeder extends Seeder
                         break;
                 }
 
-                $tenChienDich = collect($nameTemplates[$categoryName])->random();
+                $templates = $nameTemplates[$categoryName];
+                $tenChienDich = $templates[
+                    $slot % count($templates)
+                ];
 
                 $descriptions = [
                     "Chiến dịch nhằm hỗ trợ {$categoryName} tại khu vực {$location['address']}. Chúng tôi kêu gọi sự chung tay từ cộng đồng để mang lại những giá trị thiết thực như hỗ trợ tài chính, cung cấp nhu yếu phẩm và cải thiện điều kiện sống cho những hoàn cảnh khó khăn. Mỗi đóng góp, dù nhỏ, đều góp phần tạo nên sự thay đổi tích cực và lan tỏa yêu thương trong xã hội.",

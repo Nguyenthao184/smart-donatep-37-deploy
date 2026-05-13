@@ -24,6 +24,7 @@ return new class extends Migration
             $table->decimal('lat', 10, 7)->nullable();
             $table->decimal('lng', 10, 7)->nullable();
             $table->enum('trang_thai',['HOAT_DONG','BI_CAM'])->default('HOAT_DONG');
+            $table->boolean('da_hien_popup_dia_chi')->default(false);
             $table->timestamps();
         });
     }
