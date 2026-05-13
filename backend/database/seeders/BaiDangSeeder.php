@@ -30,54 +30,229 @@ class BaiDangSeeder extends Seeder
 
         $normalUsers = array_diff($nguoiDungIds, $inactiveUsers);
 
+$locations = [
 
+    // =========================
+    // ĐÀ NẴNG
+    // =========================
+    [
+        'dia_diem' => 'Phường Hải Châu 1, Quận Hải Châu, Đà Nẵng',
+        'lat' => 16.0678,
+        'lng' => 108.2208
+    ],
+    [
+        'dia_diem' => 'Phường Hòa Cường Bắc, Quận Hải Châu, Đà Nẵng',
+        'lat' => 16.0415,
+        'lng' => 108.2215
+    ],
+    [
+        'dia_diem' => 'Đường Nguyễn Văn Linh, Quận Hải Châu, Đà Nẵng',
+        'lat' => 16.0545,
+        'lng' => 108.2022
+    ],
 
-        $locations = [
-            ['dia_diem' => 'Hải Châu', 'lat' => 16.0471, 'lng' => 108.2068],
-            ['dia_diem' => 'Hải Châu - Nguyễn Văn Linh', 'lat' => 16.0545, 'lng' => 108.2022],
+    [
+        'dia_diem' => 'Phường Mỹ An, Quận Ngũ Hành Sơn, Đà Nẵng',
+        'lat' => 16.0389,
+        'lng' => 108.2473
+    ],
+    [
+        'dia_diem' => 'Phường Khuê Mỹ, Quận Ngũ Hành Sơn, Đà Nẵng',
+        'lat' => 16.0175,
+        'lng' => 108.2520
+    ],
+    [
+        'dia_diem' => 'Đường Lê Văn Hiến, Quận Ngũ Hành Sơn, Đà Nẵng',
+        'lat' => 15.9900,
+        'lng' => 108.2600
+    ],
 
-            ['dia_diem' => 'Ngũ Hành Sơn', 'lat' => 16.0000, 'lng' => 108.2700],
-            ['dia_diem' => 'Ngũ Hành Sơn - Le Van Hien', 'lat' => 15.9900, 'lng' => 108.2600],
+    [
+        'dia_diem' => 'Phường Hòa An, Quận Cẩm Lệ, Đà Nẵng',
+        'lat' => 16.0312,
+        'lng' => 108.1885
+    ],
+    [
+        'dia_diem' => 'Phường Thanh Khê Đông, Quận Thanh Khê, Đà Nẵng',
+        'lat' => 16.0704,
+        'lng' => 108.1917
+    ],
 
-            ['dia_diem' => 'Cẩm Lệ', 'lat' => 16.0200, 'lng' => 108.2000],
-            ['dia_diem' => 'Thanh Khê', 'lat' => 16.0600, 'lng' => 108.1900],
+    [
+        'dia_diem' => 'Phường An Hải Bắc, Quận Sơn Trà, Đà Nẵng',
+        'lat' => 16.0672,
+        'lng' => 108.2365
+    ],
 
-            ['dia_diem' => 'Hà Nội', 'lat' => 21.0278, 'lng' => 105.8342],
-            ['dia_diem' => 'Hải Phòng', 'lat' => 20.8449, 'lng' => 106.6881],
-            ['dia_diem' => 'Quảng Ninh', 'lat' => 21.0064, 'lng' => 107.2925],
-            ['dia_diem' => 'Bắc Ninh', 'lat' => 21.1214, 'lng' => 106.1110],
-            ['dia_diem' => 'Hải Dương', 'lat' => 20.9373, 'lng' => 106.3145],
-            ['dia_diem' => 'Nam Định', 'lat' => 20.4388, 'lng' => 106.1621],
-            ['dia_diem' => 'Thái Bình', 'lat' => 20.4463, 'lng' => 106.3366],
-            ['dia_diem' => 'Ninh Bình', 'lat' => 20.2506, 'lng' => 105.9744],
-            ['dia_diem' => 'Thanh Hóa', 'lat' => 19.8067, 'lng' => 105.7851],
-            ['dia_diem' => 'Nghệ An', 'lat' => 18.6796, 'lng' => 105.6813],
+    // =========================
+    // HÀ NỘI
+    // =========================
+    [
+        'dia_diem' => 'Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội',
+        'lat' => 21.0368,
+        'lng' => 105.7902
+    ],
+    [
+        'dia_diem' => 'Phường Láng Hạ, Quận Đống Đa, Hà Nội',
+        'lat' => 21.0147,
+        'lng' => 105.8142
+    ],
+    [
+        'dia_diem' => 'Phường Minh Khai, Quận Hai Bà Trưng, Hà Nội',
+        'lat' => 20.9987,
+        'lng' => 105.8635
+    ],
 
-            ['dia_diem' => 'Huế', 'lat' => 16.4637, 'lng' => 107.5909],
-            ['dia_diem' => 'Quảng Nam', 'lat' => 15.5737, 'lng' => 108.4740],
-            ['dia_diem' => 'Quảng Ngãi', 'lat' => 15.1214, 'lng' => 108.8044],
-            ['dia_diem' => 'Bình Định', 'lat' => 13.7820, 'lng' => 109.2196],
-            ['dia_diem' => 'Phú Yên', 'lat' => 13.0882, 'lng' => 109.0929],
-            ['dia_diem' => 'Khánh Hòa', 'lat' => 12.2585, 'lng' => 109.0526],
-            ['dia_diem' => 'Ninh Thuận', 'lat' => 11.5658, 'lng' => 108.9886],
-            ['dia_diem' => 'Bình Thuận', 'lat' => 10.9804, 'lng' => 108.2615],
+    // =========================
+    // HẢI PHÒNG
+    // =========================
+    [
+        'dia_diem' => 'Phường Lạch Tray, Quận Ngô Quyền, Hải Phòng',
+        'lat' => 20.8449,
+        'lng' => 106.6881
+    ],
 
-            ['dia_diem' => 'Đắk Lắk', 'lat' => 12.7100, 'lng' => 108.2378],
-            ['dia_diem' => 'Gia Lai', 'lat' => 13.8079, 'lng' => 108.1094],
-            ['dia_diem' => 'Kon Tum', 'lat' => 14.3497, 'lng' => 108.0005],
-            ['dia_diem' => 'Lâm Đồng', 'lat' => 11.9404, 'lng' => 108.4583],
+    // =========================
+    // QUẢNG NINH
+    // =========================
+    [
+        'dia_diem' => 'Phường Bãi Cháy, TP Hạ Long, Quảng Ninh',
+        'lat' => 20.9511,
+        'lng' => 107.0438
+    ],
 
-            ['dia_diem' => 'Hồ Chí Minh', 'lat' => 10.8231, 'lng' => 106.6297],
-            ['dia_diem' => 'Bình Dương', 'lat' => 11.3254, 'lng' => 106.4770],
-            ['dia_diem' => 'Đồng Nai', 'lat' => 11.0686, 'lng' => 107.1676],
-            ['dia_diem' => 'Long An', 'lat' => 10.6956, 'lng' => 106.2431],
-            ['dia_diem' => 'Tiền Giang', 'lat' => 10.4493, 'lng' => 106.3420],
-            ['dia_diem' => 'Bến Tre', 'lat' => 10.2434, 'lng' => 106.3756],
-            ['dia_diem' => 'Vĩnh Long', 'lat' => 10.2530, 'lng' => 105.9722],
-            ['dia_diem' => 'Cần Thơ', 'lat' => 10.0452, 'lng' => 105.7469],
-            ['dia_diem' => 'An Giang', 'lat' => 10.5216, 'lng' => 105.1259],
-            ['dia_diem' => 'Kiên Giang', 'lat' => 10.0125, 'lng' => 105.0809],
-        ];
+    // =========================
+    // BẮC NINH
+    // =========================
+    [
+        'dia_diem' => 'Phường Võ Cường, TP Bắc Ninh, Bắc Ninh',
+        'lat' => 21.1861,
+        'lng' => 106.0763
+    ],
+
+    // =========================
+    // NGHỆ AN
+    // =========================
+    [
+        'dia_diem' => 'Phường Hưng Bình, TP Vinh, Nghệ An',
+        'lat' => 18.6796,
+        'lng' => 105.6813
+    ],
+
+    // =========================
+    // HUẾ
+    // =========================
+    [
+        'dia_diem' => 'Phường Phú Hội, TP Huế, Thừa Thiên Huế',
+        'lat' => 16.4637,
+        'lng' => 107.5909
+    ],
+
+    // =========================
+    // QUẢNG NAM
+    // =========================
+    [
+        'dia_diem' => 'Phường Minh An, TP Hội An, Quảng Nam',
+        'lat' => 15.8801,
+        'lng' => 108.3380
+    ],
+
+    // =========================
+    // BÌNH ĐỊNH
+    // =========================
+    [
+        'dia_diem' => 'Phường Ghềnh Ráng, TP Quy Nhơn, Bình Định',
+        'lat' => 13.7563,
+        'lng' => 109.2167
+    ],
+
+    // =========================
+    // ĐẮK LẮK
+    // =========================
+    [
+        'dia_diem' => 'Phường Tân Lợi, TP Buôn Ma Thuột, Đắk Lắk',
+        'lat' => 12.6797,
+        'lng' => 108.0382
+    ],
+
+    // =========================
+    // GIA LAI
+    // =========================
+    [
+        'dia_diem' => 'Phường Diên Hồng, TP Pleiku, Gia Lai',
+        'lat' => 13.9833,
+        'lng' => 108.0000
+    ],
+
+    // =========================
+    // HỒ CHÍ MINH
+    // =========================
+    [
+        'dia_diem' => 'Phường 13, Quận Tân Bình, Hồ Chí Minh',
+        'lat' => 10.8012,
+        'lng' => 106.6401
+    ],
+    [
+        'dia_diem' => 'Phường Linh Trung, TP Thủ Đức, Hồ Chí Minh',
+        'lat' => 10.8701,
+        'lng' => 106.8032
+    ],
+    [
+        'dia_diem' => 'Phường Hiệp Bình Chánh, TP Thủ Đức, Hồ Chí Minh',
+        'lat' => 10.8423,
+        'lng' => 106.7319
+    ],
+    [
+        'dia_diem' => 'Phường 5, Quận Gò Vấp, Hồ Chí Minh',
+        'lat' => 10.8391,
+        'lng' => 106.6698
+    ],
+
+    // =========================
+    // BÌNH DƯƠNG
+    // =========================
+    [
+        'dia_diem' => 'Phường Phú Hòa, TP Thủ Dầu Một, Bình Dương',
+        'lat' => 11.0042,
+        'lng' => 106.6504
+    ],
+
+    // =========================
+    // ĐỒNG NAI
+    // =========================
+    [
+        'dia_diem' => 'Phường Tân Hiệp, TP Biên Hòa, Đồng Nai',
+        'lat' => 10.9574,
+        'lng' => 106.8426
+    ],
+
+    // =========================
+    // CẦN THƠ
+    // =========================
+    [
+        'dia_diem' => 'Phường Xuân Khánh, Quận Ninh Kiều, Cần Thơ',
+        'lat' => 10.0301,
+        'lng' => 105.7694
+    ],
+
+    // =========================
+    // AN GIANG
+    // =========================
+    [
+        'dia_diem' => 'Phường Mỹ Bình, TP Long Xuyên, An Giang',
+        'lat' => 10.3864,
+        'lng' => 105.4352
+    ],
+
+    // =========================
+    // KIÊN GIANG
+    // =========================
+    [
+        'dia_diem' => 'Phường Vĩnh Thanh, TP Rạch Giá, Kiên Giang',
+        'lat' => 10.0125,
+        'lng' => 105.0809
+    ],
+];
 
         function randomizeLatLng($lat, $lng)
         {
@@ -225,7 +400,7 @@ class BaiDangSeeder extends Seeder
                 'Bàn học' => ['posts/ban_hoc_nhan.jpg', 'posts/ban_hoc_1_nhan.png', 'posts/ban_hoc_2_nhan.jpg'],
                 'Ghế học sinh' => ['posts/ghe_hoc_sinh_nhan.jpg', 'posts/ghe_hoc_sinh_1_nhan.jpg', 'posts/ghe_hoc_sinh_2_nhan.jpg'],
                 'Quạt điện' => ['posts/quat_dien_nhan.jpg', 'posts/quat_dien_1_nhan.jpg'],
-                'Bếp gas' => ['posts/bep_gas_nhan.png', 'posts/bep_gas_1_nhan.jpg'],
+                'Bếp gas' => ['posts/bep_gas_nhan.jpg', 'posts/bep_gas_1_nhan.jpg'],
                 'Nồi niêu' => ['posts/noi_nieu_nhan.jpg', 'posts/noi_nieu_1_nhan.jpg'],
                 'Tủ lạnh' => ['posts/tu_lanh_nhan.jpg', 'posts/tu_lanh_1_nhan.jpg'],
                 'Máy giặt' => ['posts/may_giat_nhan.jpg'],
