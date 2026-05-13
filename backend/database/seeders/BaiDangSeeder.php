@@ -301,7 +301,6 @@ $locations = [
                     'posts/quan_ao_mua_he_2_cho.png',
 
                     'posts/ao_mua_he_1_cho.jpg',
-                    'posts/ao_mua_he_1_cho.png',
                     'posts/ao_mua_he_2_cho.png',
                 ],
 
