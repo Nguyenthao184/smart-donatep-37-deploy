@@ -471,19 +471,20 @@ class PostController extends Controller
 
         $data['nguoi_dung_id'] = $userId;
 
-        $hinhAnhPaths = [];
-        $files = $request->file('hinh_anh');
-        if ($files) {
-            $files = is_array($files) ? $files : [$files];
-            foreach ($files as $f) {
-                $pathOrUrl = $this->uploadPostImageOrFallback($f);
-                if (is_string($pathOrUrl) && $pathOrUrl !== '') {
-                    $hinhAnhPaths[] = $pathOrUrl;
-                }
-            }
-        }
+        // $hinhAnhPaths = [];
+        // $files = $request->file('hinh_anh');
+        // if ($files) {
+        //     $files = is_array($files) ? $files : [$files];
+        //     foreach ($files as $f) {
+        //         $pathOrUrl = $this->uploadPostImageOrFallback($f);
+        //         if (is_string($pathOrUrl) && $pathOrUrl !== '') {
+        //             $hinhAnhPaths[] = $pathOrUrl;
+        //         }
+        //     }
+        // }
+         $hinhAnhPaths = $request->input('hinh_anh', []);
         $data['hinh_anh'] = $hinhAnhPaths === [] ? null : $hinhAnhPaths;
-
+        
         $post = BaiDang::create($data);
 
         $gService = app(DanhMucSuggestionService::class);
