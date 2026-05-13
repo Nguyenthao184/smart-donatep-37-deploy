@@ -126,7 +126,7 @@ class CampaignFraudDemoSeeder extends Seeder
                 'muc_tieu_tien' => 10000000,
                 'so_tien_da_nhan' => 0,
                 'trang_thai' => 'HOAT_DONG',
-                'ngay_ket_thuc' => now()->addDays(20),
+                'ngay_ket_thuc' => now()->addDays(90),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
