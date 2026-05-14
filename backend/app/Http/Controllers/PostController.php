@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Jobs\DetectFraudJob;
 
 use App\Http\Requests\Post\StorePostRequest;
@@ -35,35 +36,31 @@ class PostController extends Controller
      * @return string|null Absolute URL (cloudinary) OR relative storage path (local)
      */
     private function uploadPostImageOrFallback($file): ?string
-    {
-        if (!$file || !$file->isValid()) {
-            return null;
-        }
-
-        try {
-            $uploaded = Cloudinary::uploadApi()->upload($file->getRealPath(), [
-                'folder' => 'posts',
-            ]);
-
-            if (is_array($uploaded) && !empty($uploaded['secure_url'])) {
-                return (string) $uploaded['secure_url'];
-            }
-        } catch (\Throwable $e) {
-            // Fallback to local storage; keep post creation resilient on misconfigured Cloudinary.
-            Log::warning('Cloudinary upload failed; fallback to local storage', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        try {
-            return $file->store('posts', 'public');
-        } catch (\Throwable $e) {
-            Log::error('Local storage fallback failed', [
-                'error' => $e->getMessage(),
-            ]);
-            return null;
-        }
+{
+    if (!$file || !$file->isValid()) {
+        return null;
     }
+
+    try {
+
+        $uploaded = Cloudinary::upload(
+            $file->getRealPath(),
+            [
+                'folder' => 'posts',
+            ]
+        );
+
+        return $uploaded->getSecurePath();
+
+    } catch (\Throwable $e) {
+
+        Log::warning('Cloudinary upload failed', [
+            'error' => $e->getMessage(),
+        ]);
+
+        return null;
+    }
+}
 
     public function index(Request $request)
     {
@@ -94,15 +91,15 @@ class PostController extends Controller
             });
         }
         $query
-    ->orderByRaw("
+            ->orderByRaw("
         CASE 
             WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 3
             WHEN created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 2
             ELSE 1
         END DESC
     ")
-    ->latest('created_at')
-    ->inRandomOrder();
+            ->latest('created_at')
+            ->inRandomOrder();
         $posts = $query->paginate($perPage);
         $currentUserId = Auth::id();
 
@@ -535,7 +532,7 @@ class PostController extends Controller
             ->orderByDesc('is_primary')
             ->orderByDesc('confidence')
             ->get(['danh_muc_code', 'is_primary', 'confidence']);
-        
+
         // Fraud check di chuyển sang async job - không chặn response
         // Cảnh báo admin có thể delay 2-5s, user không thấy khác biệt
         try {
@@ -1297,7 +1294,7 @@ class PostController extends Controller
             'violation_reason.description' => 'nullable|string|max:255',
             'mo_ta' => 'nullable|string|max:255',
         ]);
-        
+
         $lyDoThongBao = $this->resolveViolationReasonText($request);
         $post = BaiDang::query()->findOrFail($id);
         if ($post->trang_thai === 'TAM_DUNG') {
