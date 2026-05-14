@@ -34,7 +34,6 @@ class CampaignFraudDetectionService
 
         $payload = $features;
         if (count($payload) < 2) {
-            // baseline để không gãy AI endpoint
             $payload[] = [
                 'campaign_id' => 0,
                 'campaigns_per_user' => 1.0,
@@ -143,7 +142,6 @@ class CampaignFraudDetectionService
             default => 35.0,
         };
 
-        // boost nhẹ theo số lý do
         $base += min(18.0, count($reasons) * 4.0);
 
         return round(min(100.0, max(0.0, $base)), 2);
