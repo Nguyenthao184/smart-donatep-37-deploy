@@ -21,12 +21,13 @@ use App\Notifications\ApprovalNotification;
 use App\Notifications\AdminReviewRequiredNotification;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use App\Events\CampaignCreated;
 use App\Events\CampaignImportantUpdated;
+use App\Traits\HandlesCloudinaryMedia;
 
 class CampaignController extends Controller
 {
+    use HandlesCloudinaryMedia;
     //tạo chiến dịch
     public function store(StoreCampaignRequest $request)
     {
@@ -89,8 +90,8 @@ class CampaignController extends Controller
         $images = [];
 
         foreach ($request->file('hinh_anh') as $file) {
-            $path = $file->store('campaigns', 'public');
-            $images[] = $path;
+            $url = $this->uploadToCloudinary($file, 'campaigns');
+            if ($url) $images[] = $url;
         }
 
         // 6. Tạo mã chuyển tiền UNIQUE
@@ -167,16 +168,7 @@ class CampaignController extends Controller
 
         $images = $images ?? [];
 
-        // normalize về PATH (rất quan trọng)
-        $images = array_map(function ($img) {
-            // nếu đã là URL thì giữ nguyên
-            if (str_starts_with($img, 'http')) {
-                return $img;
-            }
-
-            // nếu là path thì convert sang URL
-            return asset('storage/' . ltrim($img, '/'));
-        }, $images);
+        $images = array_map(fn($img) => $this->resolveMediaUrl($img), $images);
 
         return response()->json([
             'id' => $chienDich->id,
@@ -243,34 +235,16 @@ class CampaignController extends Controller
 
         $anh_cu = $request->anh_cu ?? [];
 
-        $anh_cu = array_map(function ($img) {
-            // nếu là URL → chuyển về path
-            if (str_starts_with($img, asset('storage/'))) {
-                return str_replace(asset('storage/'), '', $img);
-            }
-
-            return $img;
-        }, $anh_cu);
-
-        $xoa_anh = $request->xoa_anh ?? [];
-
-        foreach ($xoa_anh as $img) {
-
-            // convert URL -> path
-            if (str_starts_with($img, asset('storage/'))) {
-                $path = str_replace(asset('storage/'), '', $img);
-            } else {
-                $path = $img;
-            }
-
-            Storage::disk('public')->delete($path);
+        foreach ($request->xoa_anh ?? [] as $img) {
+            $this->deleteCloudinaryAsset($img);
         }
 
         $anh_moi = [];
 
         if ($request->hasFile('anh_moi')) {
             foreach ($request->file('anh_moi') as $file) {
-                $anh_moi[] = $file->store('campaigns', 'public'); // lưu path
+                $url = $this->uploadToCloudinary($file, 'campaigns');
+                if ($url) $anh_moi[] = $url;
             }
         }
 
@@ -325,13 +299,7 @@ class CampaignController extends Controller
             ));
         }
 
-        $images = array_map(function ($img) {
-            if (str_starts_with($img, 'http')) {
-                return $img;
-            }
-
-            return asset('storage/' . ltrim($img, '/'));
-        }, $finalImages);
+        $images = array_map(fn($img) => $this->resolveMediaUrl($img), $finalImages);
         $chienDich->hinh_anh = $images;
 
         return response()->json([
@@ -492,14 +460,7 @@ class CampaignController extends Controller
 
         $images = json_decode($chienDich->hinh_anh, true) ?? [];
 
-        $images = array_map(function ($img) {
-            if (str_starts_with($img, 'http')) {
-                return $img;
-            }
-
-            // nếu là path thì convert sang URL
-            return asset('storage/' . $img);
-        }, $images);
+        $images = array_map(fn($img) => $this->resolveMediaUrl($img), $images);
 
         $pageSize = 6;
 
@@ -574,7 +535,7 @@ class CampaignController extends Controller
             'to_chuc' => [
                 'id' => $chienDich->toChuc->id ?? null,
                 'ten_to_chuc' => $chienDich->toChuc->ten_to_chuc ?? null,
-                'logo' => $chienDich->toChuc->logo ? asset('storage/' . $chienDich->toChuc->logo) : null,
+                'logo' => $this->resolveMediaUrl($chienDich->toChuc->logo ?? null),
                 'mo_ta' => $chienDich->toChuc->mo_ta ?? null,
                 'dia_chi' => $chienDich->toChuc->dia_chi ?? null,
                 'email' => $chienDich->toChuc->email ?? null,
@@ -749,7 +710,7 @@ class CampaignController extends Controller
             'id' => $item->id,
             'ten_chien_dich' => $item->ten_chien_dich,
             'ten_to_chuc' => $item->toChuc->ten_to_chuc ?? null,
-            'hinh_anh' => $image ? asset('storage/' . $image) : null,
+            'hinh_anh' => $this->resolveMediaUrl($image),
             'so_tien_da_nhan' => $soTien,
             'muc_tieu_tien' => $mucTieu,
             'phan_tram' => $phanTram,
@@ -766,7 +727,7 @@ class CampaignController extends Controller
             ->select('id', 'ten_danh_muc', 'hinh_anh')
             ->get()
             ->map(function ($item) {
-                $item->hinh_anh = asset('storage/' . $item->hinh_anh);
+                $item->hinh_anh = $this->resolveMediaUrl($item->hinh_anh);
                 return $item;
             });
 

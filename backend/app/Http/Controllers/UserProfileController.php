@@ -7,16 +7,17 @@ use App\Http\Requests\User\ChangePasswordRequest;
 use App\Http\Requests\User\UpdateDiaChiRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use App\Services\GeocodingService;
 use App\Models\ToChuc;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\XacMinhToChuc;
 use App\Models\BaiDang;
+use App\Traits\HandlesCloudinaryMedia;
 
 class UserProfileController extends Controller
 {
+    use HandlesCloudinaryMedia;
     //lấy ttcn
     public function getProfile()
     {
@@ -80,13 +81,8 @@ class UserProfileController extends Controller
         }
 
         if ($request->hasFile('anh_dai_dien')) {
-
-            if ($user->anh_dai_dien && Storage::disk('public')->exists($user->anh_dai_dien)) {
-                Storage::disk('public')->delete($user->anh_dai_dien);
-            }
-
-            $userData['anh_dai_dien'] = $request->file('anh_dai_dien')
-                ->store('avatars', 'public');
+            $this->deleteCloudinaryAsset($user->anh_dai_dien);
+            $userData['anh_dai_dien'] = $this->uploadToCloudinary($request->file('anh_dai_dien'), 'avatars');
         }
 
         if (!empty(array_filter($userData))) {
@@ -107,13 +103,8 @@ class UserProfileController extends Controller
             ]);
 
             if ($request->hasFile('logo')) {
-
-                if ($toChuc->logo && Storage::disk('public')->exists($toChuc->logo)) {
-                    Storage::disk('public')->delete($toChuc->logo);
-                }
-
-                $orgData['logo'] = $request->file('logo')
-                    ->store('logos', 'public');
+                $this->deleteCloudinaryAsset($toChuc->logo);
+                $orgData['logo'] = $this->uploadToCloudinary($request->file('logo'), 'logos');
             }
 
             // chỉ update khi có data
@@ -306,16 +297,6 @@ class UserProfileController extends Controller
             'message' => 'Cập nhật địa chỉ thành công',
             'data' => $user
         ]);
-    }
-
-    private function resolveMediaUrl(?string $value): ?string
-    {
-        if (!is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        $raw = trim($value);
-        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : secure_asset('storage/' . ltrim($raw, '/'));
     }
 
     private function applyPostLikeAggregates($query): void
