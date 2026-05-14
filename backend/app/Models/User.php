@@ -23,7 +23,8 @@ class User extends Authenticatable
         'dia_chi',
         'lat',
         'lng',
-        'trang_thai'
+        'trang_thai',
+        'da_hien_popup_dia_chi',
     ];
 
     protected $hidden = [
