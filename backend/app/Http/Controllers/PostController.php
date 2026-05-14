@@ -43,14 +43,14 @@ class PostController extends Controller
 
     try {
 
-        $uploaded = Cloudinary::upload(
+        $uploaded = Cloudinary::uploadApi()->upload(
             $file->getRealPath(),
             [
                 'folder' => 'posts',
             ]
         );
 
-        return $uploaded->getSecurePath();
+        return $uploaded['secure_url'];
 
     } catch (\Throwable $e) {
 
