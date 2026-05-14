@@ -6,7 +6,6 @@ use App\Models\CanhBaoGianLan;
 use App\Models\ChienDichGayQuy;
 use App\Models\User;
 use App\Notifications\AdminViolationDetectedNotification;
-use Illuminate\Support\Facades\DB;
 
 class CampaignFraudDetectionService
 {
