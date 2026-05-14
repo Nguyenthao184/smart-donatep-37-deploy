@@ -54,9 +54,21 @@ class PostController extends Controller
 
     } catch (\Throwable $e) {
 
-        Log::warning('Cloudinary upload failed', [
+        Log::warning('Cloudinary upload failed, falling back to local storage', [
             'error' => $e->getMessage(),
         ]);
+
+        // Fallback to local storage
+        try {
+            $path = $file->store('posts', 'public');
+            if ($path) {
+                return $path;
+            }
+        } catch (\Throwable $localError) {
+            Log::error('Local storage upload also failed', [
+                'error' => $localError->getMessage(),
+            ]);
+        }
 
         return null;
     }
