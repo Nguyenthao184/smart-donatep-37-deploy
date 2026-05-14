@@ -14,14 +14,15 @@ use Illuminate\Support\Facades\DB;
 use App\Notifications\ApprovalNotification;
 use App\Services\ApprovalService;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Encoding\Encoding;
 use App\Models\ChienDichGayQuy;
+use App\Traits\HandlesCloudinaryMedia;
 
 class OrganizationController extends Controller
 {
+    use HandlesCloudinaryMedia;
     // USER đăng ký tổ chức
     public function register(OrganizationRegisterRequest $request)
     {
@@ -35,12 +36,12 @@ class OrganizationController extends Controller
                     'error' => 'Không nhận được file'
                 ], 400);
             }
-            $path = $file->store('giay_phep', 'public');
+            $path = $this->uploadToCloudinary($file, 'giay_phep');
 
             // upload logo
             $logoPath = null;
             if ($request->hasFile('logo')) {
-                $logoPath = $request->file('logo')->store('logos', 'public');
+                $logoPath = $this->uploadToCloudinary($request->file('logo'), 'logos');
             }
 
             $org = XacMinhToChuc::create([
@@ -55,14 +56,6 @@ class OrganizationController extends Controller
                 'so_dien_thoai' => $request->so_dien_thoai,
                 'logo' => $logoPath,
             ]);
-
-            $org->giay_phep = $org->giay_phep 
-                ? secure_asset('storage/' . $org->giay_phep) 
-                : null;
-
-            $org->logo = $org->logo 
-                ? secure_asset('storage/' . $org->logo) 
-                : null;
 
             DB::commit();
                     $this->notifyAdminsForPendingOrganization($org);
@@ -165,10 +158,8 @@ class OrganizationController extends Controller
                     ->margin(10)
                     ->build();
 
-                $fileName = 'qr_' . time() . '_' . Str::random(5) . '.png';
-
-                $path = 'qr_code/' . $fileName;
-                Storage::disk('public')->put($path, $result->getString());
+                $publicId = 'qr_' . time() . '_' . Str::random(5);
+                $qrUrl = $this->uploadRawToCloudinary($result->getString(), 'qr_codes', $publicId);
 
                 // tạo tài khoản gây quỹ
                 TaiKhoanGayQuy::create([
@@ -180,7 +171,7 @@ class OrganizationController extends Controller
                     'ma_yeu_cau_mb' => $mb['request_id'],
                     'so_du' => 0,
                     'trang_thai' => 'HOAT_DONG',
-                    'qr_code' => $path
+                    'qr_code' => $qrUrl
                 ]);
             }
 
@@ -315,7 +306,7 @@ class OrganizationController extends Controller
             return [
                 'id' => $org->id,
                 'ten_to_chuc' => $org->ten_to_chuc,
-                'logo' => $org->logo ? secure_asset('storage/' . $org->logo) : null,
+                'logo' => $this->resolveMediaUrl($org->logo),
                 'dia_chi' => $org->dia_chi,
                 'tong_gay_quy' => (float) $org->tong_gay_quy,
                 'so_tai_khoan' => optional($org->taiKhoanGayQuy)->so_tai_khoan,
@@ -347,7 +338,7 @@ class OrganizationController extends Controller
                 $hinhAnh = null;
                 if ($cd->hinh_anh) {
                     $arr = json_decode($cd->hinh_anh, true);
-                    $hinhAnh = isset($arr[0]) ? secure_asset('storage/' . $arr[0]) : null;
+                    $hinhAnh = isset($arr[0]) ? $this->resolveMediaUrl($arr[0]) : null;
                 }
 
                 // % hoàn thành
@@ -425,7 +416,7 @@ class OrganizationController extends Controller
             // thông tin tổ chức
             'id' => $org->id,
             'ten_to_chuc' => $org->ten_to_chuc,
-            'logo' => $org->logo ? secure_asset('storage/' . $org->logo) : null,
+            'logo' => $this->resolveMediaUrl($org->logo),
             'mo_ta' => $org->mo_ta,
             'dia_chi' => $org->dia_chi,
             'so_dien_thoai' => $org->so_dien_thoai,
@@ -437,9 +428,7 @@ class OrganizationController extends Controller
             // tài khoản
             'ten_tai_khoan' => optional($tk)->chu_tai_khoan,
             'so_tai_khoan' => optional($tk)->so_tai_khoan,
-            'qr_code' => optional($tk)->qr_code 
-                ? secure_asset('storage/' . $tk->qr_code) 
-                : null,
+            'qr_code' => $this->resolveMediaUrl(optional($tk)->qr_code),
 
             // thống kê (match UI)
             'tong_thu' => (float) $tongThu,
@@ -539,6 +528,35 @@ class OrganizationController extends Controller
                 title: 'Có tổ chức mới chờ duyệt',
                 message: 'Tổ chức "' . $org->ten_to_chuc . '" vừa gửi hồ sơ xác minh.'
             ));
+        }
+    }
+
+    public function testCloudinary(Request $request)
+    {
+        try {
+
+            if (!$request->hasFile('image')) {
+                return response()->json([
+                    'error' => 'Không có file'
+                ], 400);
+            }
+
+            $url = $this->uploadToCloudinary(
+                $request->file('image'),
+                'test_uploads'
+            );
+
+            return response()->json([
+                'success' => true,
+                'url' => $url
+            ]);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }

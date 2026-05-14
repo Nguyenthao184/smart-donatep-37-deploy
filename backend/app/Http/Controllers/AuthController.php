@@ -16,9 +16,11 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Http;
+use App\Traits\HandlesCloudinaryMedia;
 
 class AuthController extends Controller
 {
+    use HandlesCloudinaryMedia;
     // đăng ký
     public function register(Request $request)
     {
@@ -380,13 +382,4 @@ class AuthController extends Controller
         ]);
     }
 
-    private function resolveMediaUrl(?string $value): ?string
-    {
-        if (!is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        $raw = trim($value);
-        return preg_match('/^https?:\/\//i', $raw) === 1 ? $raw : secure_asset('storage/' . ltrim($raw, '/'));
-    }
 }
