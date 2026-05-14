@@ -157,7 +157,7 @@ class DanhMucSuggestionService
             'hoc sinh'
         ];
         foreach ($eduKw as $kw) {
-            if (str_contains($textAscii, $kw)) {
+            if (str_contains(" " . $textAscii . " ", " " . $kw . " ")) {
                 $add('education', 0.85);
                 break;
             }
@@ -221,7 +221,7 @@ class DanhMucSuggestionService
             'banh mi'
         ];
         foreach ($foodKw as $kw) {
-            if (str_contains($textAscii, $kw)) {
+            if (str_contains(" " . $textAscii . " ", " " . $kw . " ")) {
                 $add('food', 0.85);
                 break;
             }
@@ -237,7 +237,7 @@ class DanhMucSuggestionService
         // ========== CLOTHES ==========
         $clothesKw = ['quan ao', 'ao quan', 'quan jean', 'jean', 'ao khoac', 'giay', 'dep', 'do mac', 'chan ', ' man', 'ao am', 'ao lanh', 'ao len', 'hoodie',];
         foreach ($clothesKw as $kw) {
-            if (str_contains($textAscii, $kw)) {
+            if (str_contains(" " . $textAscii . " ", " " . $kw . " ")) {
                 $add('clothes', 0.8);
                 break;
             }
@@ -266,7 +266,7 @@ class DanhMucSuggestionService
         $vehicleKw = ['xe may', 'xe dap', 'xe lan', 'phuong tien', 'xe lan'];
         foreach ($vehicleKw as $kw) {
             $k = $this->normalize($kw);
-            if ($k !== '' && str_contains($textAscii, $k)) {
+            if ($k !== '' && str_contains(" " . $textAscii . " ", " " . $k . " ")) {
                 $add('vehicle', 0.8);
                 if ($k === 'xe lan') {
                     $add('medical', 0.72);
@@ -303,7 +303,7 @@ class DanhMucSuggestionService
         ];
         foreach ($houseKw as $kw) {
             $k = $this->normalize($kw);
-            if ($textAscii !== '' && $k !== '' && str_contains($textAscii, $k)) {
+            if ($textAscii !== '' && $k !== '' && str_contains(" " . $textAscii . " ", " " . $k . " ")) {
                 $add('household', 0.8);
                 break;
             }
@@ -334,7 +334,7 @@ class DanhMucSuggestionService
         }
         $electronicKw = ['dien thoai', 'tablet', 'ipad', 'may tinh bang', 'may in', 'tai nghe',];
         foreach ($electronicKw as $kw) {
-            if (str_contains($textAscii, $kw)) {
+            if (str_contains(" " . $textAscii . " ", " " . $kw . " ")) {
 
                 $add('electronics', 0.82);
                 break;
@@ -349,7 +349,7 @@ class DanhMucSuggestionService
         }
         $disasterKw = ['bao', 'lu lut', 'ngap nuoc', 'sat lo', 'thien tai',];
         foreach ($disasterKw as $kw) {
-            if (str_contains($textAscii, $kw)) {
+            if (str_contains(" " . $textAscii . " ", " " . $kw . " ")) {
                 $add('disaster', 0.88);
                 $add('food', 0.75);
                 $add('clothes', 0.72);
@@ -370,7 +370,7 @@ class DanhMucSuggestionService
         // ========== MEDICAL ==========
         $medKw = ['thuoc', 'y te', 'phau thuat', 'vien phi', 'kham benh'];
         foreach ($medKw as $kw) {
-            if (str_contains($textAscii, $kw)) {
+            if (str_contains(" " . $textAscii . " ", " " . $kw . " ")) {
                 $add('medical', 0.8);
                 break;
             }
@@ -379,7 +379,7 @@ class DanhMucSuggestionService
         // ========== EMERGENCY (Cháy nhà) ==========
         $fireAscii = str_contains($textAscii, 'chay nha')
             || str_contains($textAscii, 'nha bi chay')
-            || str_contains($textAscii, 'bi chay')
+            || str_contains(" " . $textAscii . " ", " bi chay ")
             || (str_contains($textAscii, 'chay') && str_contains($textAscii, 'nha'))
             || str_contains($textAscii, 'hoa hoan')
             || str_contains($textAscii, 'mat nha')
