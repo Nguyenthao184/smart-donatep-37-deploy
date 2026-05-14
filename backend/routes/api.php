@@ -42,6 +42,7 @@ Route::get('/posts/search', [PostController::class, 'search']);
 
 Route::middleware('auth:sanctum')->group(function(){
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/user/hide-address-popup', [AuthController::class, 'hideAddressPopup']);
     Route::post('/logout',[AuthController::class,'logout']);
     Route::post('/broadcasting/auth', function (Request $request) {
         return Broadcast::auth($request);

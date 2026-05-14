@@ -215,6 +215,19 @@ class AuthController extends Controller
         ]);
     }
 
+    public function hideAddressPopup()
+    {
+        $user = auth()->user();
+
+        $user->update([
+            'da_hien_popup_dia_chi' => true
+        ]);
+
+        return response()->json([
+            'message' => 'OK'
+        ]);
+    }
+
     public function resendOtp(Request $request)
     {
         $email = $request->email;
