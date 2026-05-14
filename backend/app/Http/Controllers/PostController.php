@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Jobs\DetectFraudJob;
 
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
@@ -482,9 +483,9 @@ class PostController extends Controller
         //         }
         //     }
         // }
-         $hinhAnhPaths = $request->input('hinh_anh', []);
+        $hinhAnhPaths = $request->input('hinh_anh', []);
         $data['hinh_anh'] = $hinhAnhPaths === [] ? null : $hinhAnhPaths;
-        
+
         $post = BaiDang::create($data);
 
         $gService = app(DanhMucSuggestionService::class);
@@ -534,21 +535,19 @@ class PostController extends Controller
             ->orderByDesc('is_primary')
             ->orderByDesc('confidence')
             ->get(['danh_muc_code', 'is_primary', 'confidence']);
-        // Fraud checks are best-effort: do not block post creation.
+        
+        // Fraud check di chuyển sang async job - không chặn response
+        // Cảnh báo admin có thể delay 2-5s, user không thấy khác biệt
         try {
-            app(FraudDetectionService::class)->checkPost(
-                (int) $userId,
-                (int) $post->id,
-                (string) $post->tieu_de,
-                (string) $post->mo_ta
-            );
+            DetectFraudJob::dispatch((int) $post->id, (int) $userId)->delay(now()->addSeconds(1));
         } catch (\Throwable $e) {
-            Log::warning('Post store: fraud check failed', [
+            Log::warning('Post store: dispatch DetectFraudJob failed', [
                 'post_id' => (int) $post->id,
                 'user_id' => (int) $userId,
                 'error' => $e->getMessage(),
             ]);
         }
+
         return response()->json([
             'message' => 'Tạo bài đăng thành công',
             'data' => $post,
