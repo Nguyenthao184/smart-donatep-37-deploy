@@ -33,18 +33,72 @@ class DanhMucSuggestionService
     private function removeVietnameseAccents(string $str): string
     {
         $accents = [
-            'á' => 'a', 'à' => 'a', 'ả' => 'a', 'ã' => 'a', 'ạ' => 'a',
-            'ă' => 'a', 'ắ' => 'a', 'ằ' => 'a', 'ẳ' => 'a', 'ẵ' => 'a', 'ặ' => 'a',
-            'â' => 'a', 'ấ' => 'a', 'ầ' => 'a', 'ẩ' => 'a', 'ẫ' => 'a', 'ậ' => 'a',
-            'é' => 'e', 'è' => 'e', 'ẻ' => 'e', 'ẽ' => 'e', 'ẹ' => 'e',
-            'ê' => 'e', 'ế' => 'e', 'ề' => 'e', 'ể' => 'e', 'ễ' => 'e', 'ệ' => 'e',
-            'í' => 'i', 'ì' => 'i', 'ỉ' => 'i', 'ĩ' => 'i', 'ị' => 'i',
-            'ó' => 'o', 'ò' => 'o', 'ỏ' => 'o', 'õ' => 'o', 'ọ' => 'o',
-            'ô' => 'o', 'ố' => 'o', 'ồ' => 'o', 'ổ' => 'o', 'ỗ' => 'o', 'ộ' => 'o',
-            'ơ' => 'o', 'ớ' => 'o', 'ờ' => 'o', 'ở' => 'o', 'ỡ' => 'o', 'ợ' => 'o',
-            'ú' => 'u', 'ù' => 'u', 'ủ' => 'u', 'ũ' => 'u', 'ụ' => 'u',
-            'ư' => 'u', 'ứ' => 'u', 'ừ' => 'u', 'ử' => 'u', 'ữ' => 'u', 'ự' => 'u',
-            'ý' => 'y', 'ỳ' => 'y', 'ỷ' => 'y', 'ỹ' => 'y', 'ỵ' => 'y',
+            'á' => 'a',
+            'à' => 'a',
+            'ả' => 'a',
+            'ã' => 'a',
+            'ạ' => 'a',
+            'ă' => 'a',
+            'ắ' => 'a',
+            'ằ' => 'a',
+            'ẳ' => 'a',
+            'ẵ' => 'a',
+            'ặ' => 'a',
+            'â' => 'a',
+            'ấ' => 'a',
+            'ầ' => 'a',
+            'ẩ' => 'a',
+            'ẫ' => 'a',
+            'ậ' => 'a',
+            'é' => 'e',
+            'è' => 'e',
+            'ẻ' => 'e',
+            'ẽ' => 'e',
+            'ẹ' => 'e',
+            'ê' => 'e',
+            'ế' => 'e',
+            'ề' => 'e',
+            'ể' => 'e',
+            'ễ' => 'e',
+            'ệ' => 'e',
+            'í' => 'i',
+            'ì' => 'i',
+            'ỉ' => 'i',
+            'ĩ' => 'i',
+            'ị' => 'i',
+            'ó' => 'o',
+            'ò' => 'o',
+            'ỏ' => 'o',
+            'õ' => 'o',
+            'ọ' => 'o',
+            'ô' => 'o',
+            'ố' => 'o',
+            'ồ' => 'o',
+            'ổ' => 'o',
+            'ỗ' => 'o',
+            'ộ' => 'o',
+            'ơ' => 'o',
+            'ớ' => 'o',
+            'ờ' => 'o',
+            'ở' => 'o',
+            'ỡ' => 'o',
+            'ợ' => 'o',
+            'ú' => 'u',
+            'ù' => 'u',
+            'ủ' => 'u',
+            'ũ' => 'u',
+            'ụ' => 'u',
+            'ư' => 'u',
+            'ứ' => 'u',
+            'ừ' => 'u',
+            'ử' => 'u',
+            'ữ' => 'u',
+            'ự' => 'u',
+            'ý' => 'y',
+            'ỳ' => 'y',
+            'ỷ' => 'y',
+            'ỹ' => 'y',
+            'ỵ' => 'y',
             'đ' => 'd',
         ];
 
@@ -58,13 +112,13 @@ class DanhMucSuggestionService
     public function suggest(string $title, string $description): array
     {
         $raw = trim((string) ($title ?? '') . ' ' . (string) ($description ?? ''));
-        
+
         if ($raw === '') {
             return [];
         }
 
         $rawLower = mb_strtolower($raw, 'UTF-8');
-        $textNormalized = $this->normalize($raw); // Unicode - cho Unicode keywords
+        //$textNormalized = $this->normalize($raw); // Unicode - cho Unicode keywords
         $textAscii = $this->normalizeAscii($raw);  // ASCII - cho ASCII keywords
 
         $candidates = [];
@@ -80,7 +134,28 @@ class DanhMucSuggestionService
         };
 
         // ========== EDUCATION ==========
-        $eduKw = ['hoc tap', 'sach', 'sach giao khoa', 'sach but', 'sach vo', 'vo sach', 'but sach', 'vo', 'but', 'hoc phi', 'laptop', 'may tinh', 'giao khoa', 'dung hoc tap', 'do hoc tap'];
+        $eduKw = [
+            'hoc tap',
+            'sach',
+            'sach giao khoa',
+            'sach but',
+            'sach vo',
+            'vo sach',
+            'but sach',
+            'vo',
+            'but',
+            'hoc phi',
+            'laptop',
+            'may tinh',
+            'giao khoa',
+            'dung hoc tap',
+            'do hoc tap',
+            'ban hoc',
+            'ghe hoc sinh',
+            'cap hoc sinh',
+            'sinh vien',
+            'hoc sinh'
+        ];
         foreach ($eduKw as $kw) {
             if (str_contains($textAscii, $kw)) {
                 $add('education', 0.85);
@@ -88,24 +163,70 @@ class DanhMucSuggestionService
             }
         }
 
-        $eduVi = ['sách bút', 'sách vở', 'vở sách', 'bút sách', 'sách', 'sách giáo khoa', 'vở', 'bút', 'học tập', 'học phí', 'laptop', 'máy tính', 'đồ dùng học tập', 'cần sách', 'xin sách', 'tặng sách', 'đồ học tập', 'dụng cụ học tập'];
+        $eduVi = [
+            'sách bút',
+            'sách vở',
+            'vở sách',
+            'bút sách',
+            'sách',
+            'sách giáo khoa',
+            'vở',
+            'bút',
+            'học tập',
+            'học phí',
+            'laptop',
+            'máy tính',
+            'đồ dùng học tập',
+            'cần sách',
+            'xin sách',
+            'tặng sách',
+            'đồ học tập',
+            'dụng cụ học tập',
+            'bàn học',
+            'ghế học sinh',
+            'cặp học sinh',
+            'sinh viên',
+            'học sinh',
+        ];
         foreach ($eduVi as $w) {
             if (mb_strpos($rawLower, mb_strtolower($w, 'UTF-8')) !== false) {
                 $add('education', 0.88);
                 break;
             }
         }
-
+        if (preg_match('/sinh\s*viên|học\s*sinh/u', $rawLower) && isset($candidates['education'])) {
+            $candidates['education']['confidence'] = max((float) $candidates['education']['confidence'], 0.92);
+        }
         // ========== FOOD ==========
-        $foodKw = ['gao', 'my tom', 'mi tom', 'thuc pham', 'do an', 'sua', 'thieu an', 'khong du an', 'doi', 'can thuc pham', 'can gao', 'can do an', 'luong thuc', 'thuc an', 'an uong', 'com', 'banh mi'];
+        $foodKw = [
+            'gao',
+            'my tom',
+            'mi tom',
+            'thuc pham',
+            'do an',
+            'sua',
+            'rau',
+            'rau cu',
+            'thieu an',
+            'khong du an',
+            'doi',
+            'can thuc pham',
+            'can gao',
+            'can do an',
+            'luong thuc',
+            'thuc an',
+            'an uong',
+            'com ',
+            ' com',
+            'banh mi'
+        ];
         foreach ($foodKw as $kw) {
             if (str_contains($textAscii, $kw)) {
                 $add('food', 0.85);
                 break;
             }
         }
-
-        $foodVi = ['đồ ăn', 'thực phẩm', 'lương thực', 'gạo', 'mì tôm', 'sữa', 'đói', 'cần đồ ăn', 'cần thực phẩm', 'ăn uống'];
+        $foodVi = ['đồ ăn', 'thực phẩm', 'lương thực', 'gạo', 'mì tôm', 'sữa', 'đói', 'cần đồ ăn', 'cần thực phẩm', 'ăn uống', 'rau', 'rau củ', 'rau củ quả'];
         foreach ($foodVi as $w) {
             if (mb_strpos($rawLower, mb_strtolower($w, 'UTF-8')) !== false) {
                 $add('food', 0.88);
@@ -114,7 +235,7 @@ class DanhMucSuggestionService
         }
 
         // ========== CLOTHES ==========
-        $clothesKw = ['quan ao', 'ao quan', 'quan jean', 'jean', 'ao khoac', 'giay', 'dep', 'do mac', 'chan', 'man'];
+        $clothesKw = ['quan ao', 'ao quan', 'quan jean', 'jean', 'ao khoac', 'giay', 'dep', 'do mac', 'chan ', ' man', 'ao am', 'ao lanh', 'ao len', 'hoodie',];
         foreach ($clothesKw as $kw) {
             if (str_contains($textAscii, $kw)) {
                 $add('clothes', 0.8);
@@ -122,40 +243,130 @@ class DanhMucSuggestionService
             }
         }
 
-        $clothesVi = ['áo quần', 'quần áo', 'áo khoác', 'giày', 'dép', 'chăn', 'màn', 'đồ mặc'];
+        $clothesVi = ['áo quần', 'quần áo', 'áo khoác', 'giày', 'dép', 'chăn', 'màn', 'đồ mặc', 'áo ấm', 'áo lạnh', 'áo len', 'áo mùa đông', 'áo mùa hè', 'áo mùa xuân', 'áo mùa thu'];
         foreach ($clothesVi as $w) {
             if (mb_strpos($rawLower, mb_strtolower($w, 'UTF-8')) !== false) {
                 $add('clothes', 0.88);
                 break;
             }
         }
+        if (
+            $textAscii !== ''
+            && preg_match('/\bao\b/', $textAscii)
+            && (
+                str_contains($textAscii, 'quan')
+                || str_contains($textAscii, 'mac')
+                || str_contains($textAscii, 'khoac')
+            )
+        ) {
+            $add('clothes', 0.82);
+        }
 
         // ========== VEHICLE ==========
-        $vehicleKw = ['xe may', 'xe dap', 'xe lan', 'phuong tien'];
+        $vehicleKw = ['xe may', 'xe dap', 'xe lan', 'phuong tien', 'xe lan'];
         foreach ($vehicleKw as $kw) {
-            if (str_contains($textAscii, $kw)) {
+            $k = $this->normalize($kw);
+            if ($k !== '' && str_contains($textAscii, $k)) {
                 $add('vehicle', 0.8);
+                if ($k === 'xe lan') {
+                    $add('medical', 0.72);
+                }
                 break;
             }
         }
 
         // ========== HOUSEHOLD ==========
-        $houseKw = ['noi', 'bep', 'noi com', 'gia dung', 'do sinh hoat', 'vat dung sinh hoat', 'chay nha', 'nha bi chay', 'bi chay', 'mat nha', 'khong con nha', 'hoa hoan'];
+        
+        $houseKw = [
+            'bep',
+            'noi com',
+            'gia dung',
+            'do sinh hoat',
+            'vat dung sinh hoat',
+            'ban hoc',
+            'ghe hoc sinh',
+            'quat dien',
+            'bep gas',
+            'noi nieu',
+            'tu lanh',
+            'may giat',
+            'ban ghe',
+            'giuong',
+            'tu quan ao',
+
+            'chay nha',
+            'nha bi chay',
+            'bi chay',
+            'mat nha',
+            'khong con nha',
+            'hoa hoan',
+        ];
         foreach ($houseKw as $kw) {
-            if (str_contains($textAscii, $kw)) {
+            $k = $this->normalize($kw);
+            if ($textAscii !== '' && $k !== '' && str_contains($textAscii, $k)) {
                 $add('household', 0.8);
                 break;
             }
         }
+        $houseVi = [
+            'cháy nhà',
+            'nhà bị cháy',
+            'hỏa hoạn',
+            'mất nhà',
+            'mất hết đồ',
 
-        $houseVi = ['cháy nhà', 'nhà bị cháy', 'hỏa hoạn', 'mất nhà', 'mất hết đồ'];
+            'bàn học',
+            'ghế học sinh',
+            'quạt điện',
+            'bếp gas',
+            'nồi niêu',
+            'tủ lạnh',
+            'máy giặt',
+            'bàn ghế',
+            'giường',
+            'tủ quần áo',
+        ];
         foreach ($houseVi as $w) {
             if (mb_strpos($rawLower, mb_strtolower($w, 'UTF-8')) !== false) {
                 $add('household', 0.85);
                 break;
             }
         }
+        $electronicKw = ['dien thoai', 'tablet', 'ipad', 'may tinh bang', 'may in', 'tai nghe',];
+        foreach ($electronicKw as $kw) {
+            if (str_contains($textAscii, $kw)) {
 
+                $add('electronics', 0.82);
+                break;
+            }
+        }
+        $electronicVi = ['điện thoại', 'máy tính bảng', 'máy in', 'tai nghe',];
+        foreach ($electronicVi as $w) {
+            if (mb_strpos($rawLower, mb_strtolower($w, 'UTF-8')) !== false) {
+                $add('electronics', 0.86);
+                break;
+            }
+        }
+        $disasterKw = ['bao', 'lu lut', 'ngap nuoc', 'sat lo', 'thien tai',];
+        foreach ($disasterKw as $kw) {
+            if (str_contains($textAscii, $kw)) {
+                $add('disaster', 0.88);
+                $add('food', 0.75);
+                $add('clothes', 0.72);
+                $add('household', 0.8);
+                break;
+            }
+        }
+        $disasterVi = ['bão', 'lũ lụt', 'ngập nước', 'sạt lở', 'thiên tai',];
+        foreach ($disasterVi as $w) {
+            if (mb_strpos($rawLower, mb_strtolower($w, 'UTF-8')) !== false) {
+                $add('disaster', 0.9);
+                $add('food', 0.75);
+                $add('clothes', 0.72);
+                $add('household', 0.8);
+                break;
+            }
+        }
         // ========== MEDICAL ==========
         $medKw = ['thuoc', 'y te', 'phau thuat', 'vien phi', 'kham benh'];
         foreach ($medKw as $kw) {
@@ -191,7 +402,7 @@ class DanhMucSuggestionService
         // Sort by confidence desc and mark primary
         $rows = array_values($candidates);
         usort($rows, fn($a, $b) => ($b['confidence'] <=> $a['confidence']));
-        
+
         if (!$rows) {
             return [];
         }
@@ -212,20 +423,28 @@ class DanhMucSuggestionService
         }
 
         // Bỏ nhãn khi "đã có"
-        if (preg_match('/đã\s*(có|đủ)\s+(quần\s*áo|áo\s*quần|đồ\s*mặc|giày|dép|chăn|màn)/u', $rawLower)
-            && !preg_match('/chưa\s+có\s+(quần\s*áo|áo\s*quần|đồ\s*mặc)/u', $rawLower)) {
+        if (
+            preg_match('/đã\s*(có|đủ)\s+(quần\s*áo|áo\s*quần|đồ\s*mặc|giày|dép|chăn|màn)/u', $rawLower)
+            && !preg_match('/chưa\s+có\s+(quần\s*áo|áo\s*quần|đồ\s*mặc)/u', $rawLower)
+        ) {
             unset($candidates['clothes']);
         }
-        if (preg_match('/đã\s*(có|đủ)\s+(thực\s*phẩm|đồ\s*ăn|lương\s*thực|gạo)/u', $rawLower)
-            && !preg_match('/chưa\s+có\s+(thực\s*phẩm|đồ\s*ăn)/u', $rawLower)) {
+        if (
+            preg_match('/đã\s*(có|đủ)\s+(thực\s*phẩm|đồ\s*ăn|lương\s*thực|gạo)/u', $rawLower)
+            && !preg_match('/chưa\s+có\s+(thực\s*phẩm|đồ\s*ăn)/u', $rawLower)
+        ) {
             unset($candidates['food']);
         }
-        if (preg_match('/đã\s*(có|đủ)\s+(sách|vở|laptop|máy\s*tính|đồ\s*học\s*tập|học\s*phí)/u', $rawLower)
-            && !preg_match('/chưa\s+có\s+(sách|vở|laptop)/u', $rawLower)) {
+        if (
+            preg_match('/đã\s*(có|đủ)\s+(sách|vở|laptop|máy\s*tính|đồ\s*học\s*tập|học\s*phí)/u', $rawLower)
+            && !preg_match('/chưa\s+có\s+(sách|vở|laptop)/u', $rawLower)
+        ) {
             unset($candidates['education']);
         }
-        if (preg_match('/đã\s*(có|đủ)\s+(xe\s*máy|xe\s*đạp|xe\s*lăn|phương\s*tiện)/u', $rawLower)
-            && !preg_match('/chưa\s+có\s+(xe\s*máy|xe\s*đạp)/u', $rawLower)) {
+        if (
+            preg_match('/đã\s*(có|đủ)\s+(xe\s*máy|xe\s*đạp|xe\s*lăn|phương\s*tiện)/u', $rawLower)
+            && !preg_match('/chưa\s+có\s+(xe\s*máy|xe\s*đạp)/u', $rawLower)
+        ) {
             unset($candidates['vehicle']);
         }
         if (preg_match('/đã\s*(có|đủ)\s+(nồi|bếp|đồ\s*gia\s*dụng|đồ\s*sinh\s*hoạt)/u', $rawLower)) {
