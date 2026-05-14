@@ -21,18 +21,12 @@ class CampaignFraudDetectionService
         if ($campaignId <= 0) {
             return;
         }
-        $campaign = ChienDichGayQuy::find($campaignId);
-    if (!$campaign || $campaign->trang_thai !== 'HOAT_DONG') {
-        return;  
-    }
-    $tongUngHo = DB::table('ung_ho')
-        ->where('chien_dich_gay_quy_id', $campaignId)
-        ->where('trang_thai', 'THANH_CONG')
-        ->count();
 
-    if ($tongUngHo === 0) {
-        return; 
-    }
+        $campaign = ChienDichGayQuy::find($campaignId);
+        if (!$campaign || $campaign->trang_thai === 'TU_CHOI') {
+            return;
+        }
+
         $features = $this->featureService->buildCampaignsFeatures([$campaignId]);
         if ($features === []) {
             return;
@@ -60,7 +54,17 @@ class CampaignFraudDetectionService
             return;
         }
 
-        $reasons = $this->buildCampaignReasons($feature);
+        $isPending = $campaign->trang_thai === 'CHO_XU_LY';
+        $reasons = $this->buildCampaignReasons(
+            $feature,
+            !$isPending,
+            !$isPending
+        );
+
+        if ($isPending && $reasons === []) {
+            return;
+        }
+
         $shouldCreate = in_array($risk, ['MEDIUM', 'HIGH'], true) || $reasons !== [];
         if (!$shouldCreate) {
             return;
@@ -103,24 +107,28 @@ class CampaignFraudDetectionService
      * @param array<string, mixed> $feature
      * @return array<int, string>
      */
-    private function buildCampaignReasons(array $feature): array
+    private function buildCampaignReasons(array $feature, bool $includeMoneyViolations = true, bool $includeLowDonorViolation = true): array
     {
         $reasons = [];
 
         if ((float) ($feature['campaigns_per_user'] ?? 0) >= 4) {
             $reasons[] = 'Nhiều chiến dịch cùng tổ chức';
         }
-        if ((float) ($feature['donation_growth'] ?? 0) >= 200) {
-            $reasons[] = 'Tăng ủng hộ bất thường (chiến dịch)';
+
+        if ($includeMoneyViolations) {
+            if ((float) ($feature['donation_growth'] ?? 0) >= 200) {
+                $reasons[] = 'Tăng ủng hộ bất thường (chiến dịch)';
+            }
+            if ((float) ($feature['self_donation_ratio'] ?? 0) >= 0.5) {
+                $reasons[] = 'Tỷ lệ tự ủng hộ cao';
+            }
+            if ((float) ($feature['donation_frequency'] ?? 0) >= 8) {
+                $reasons[] = 'Ủng hộ dày đặc (7 ngày gần đây)';
+            }
         }
-        if ((float) ($feature['self_donation_ratio'] ?? 0) >= 0.5) {
-            $reasons[] = 'Tỷ lệ tự ủng hộ cao';
-        }
-        if ((float) ($feature['unique_donors'] ?? 99) <= 3) {
+
+        if ($includeLowDonorViolation && (float) ($feature['unique_donors'] ?? 99) <= 3) {
             $reasons[] = 'Ít người ủng hộ';
-        }
-        if ((float) ($feature['donation_frequency'] ?? 0) >= 8) {
-            $reasons[] = 'Ủng hộ dày đặc (7 ngày gần đây)';
         }
 
         return $reasons;
