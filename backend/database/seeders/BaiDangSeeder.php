@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Services\GeocodingService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Arr;
@@ -30,229 +29,229 @@ class BaiDangSeeder extends Seeder
 
         $normalUsers = array_diff($nguoiDungIds, $inactiveUsers);
 
-$locations = [
+        $locations = [
 
-    // =========================
-    // ĐÀ NẴNG
-    // =========================
-    [
-        'dia_diem' => 'Phường Hải Châu 1, Quận Hải Châu, Đà Nẵng',
-        'lat' => 16.0678,
-        'lng' => 108.2208
-    ],
-    [
-        'dia_diem' => 'Phường Hòa Cường Bắc, Quận Hải Châu, Đà Nẵng',
-        'lat' => 16.0415,
-        'lng' => 108.2215
-    ],
-    [
-        'dia_diem' => 'Đường Nguyễn Văn Linh, Quận Hải Châu, Đà Nẵng',
-        'lat' => 16.0545,
-        'lng' => 108.2022
-    ],
+            // =========================
+            // ĐÀ NẴNG
+            // =========================
+            [
+                'dia_diem' => 'Phường Hải Châu 1, Quận Hải Châu, Đà Nẵng',
+                'lat' => 16.0678,
+                'lng' => 108.2208
+            ],
+            [
+                'dia_diem' => 'Phường Hòa Cường Bắc, Quận Hải Châu, Đà Nẵng',
+                'lat' => 16.0415,
+                'lng' => 108.2215
+            ],
+            [
+                'dia_diem' => 'Đường Nguyễn Văn Linh, Quận Hải Châu, Đà Nẵng',
+                'lat' => 16.0545,
+                'lng' => 108.2022
+            ],
 
-    [
-        'dia_diem' => 'Phường Mỹ An, Quận Ngũ Hành Sơn, Đà Nẵng',
-        'lat' => 16.0389,
-        'lng' => 108.2473
-    ],
-    [
-        'dia_diem' => 'Phường Khuê Mỹ, Quận Ngũ Hành Sơn, Đà Nẵng',
-        'lat' => 16.0175,
-        'lng' => 108.2520
-    ],
-    [
-        'dia_diem' => 'Đường Lê Văn Hiến, Quận Ngũ Hành Sơn, Đà Nẵng',
-        'lat' => 15.9900,
-        'lng' => 108.2600
-    ],
+            [
+                'dia_diem' => 'Phường Mỹ An, Quận Ngũ Hành Sơn, Đà Nẵng',
+                'lat' => 16.0389,
+                'lng' => 108.2473
+            ],
+            [
+                'dia_diem' => 'Phường Khuê Mỹ, Quận Ngũ Hành Sơn, Đà Nẵng',
+                'lat' => 16.0175,
+                'lng' => 108.2520
+            ],
+            [
+                'dia_diem' => 'Đường Lê Văn Hiến, Quận Ngũ Hành Sơn, Đà Nẵng',
+                'lat' => 15.9900,
+                'lng' => 108.2600
+            ],
 
-    [
-        'dia_diem' => 'Phường Hòa An, Quận Cẩm Lệ, Đà Nẵng',
-        'lat' => 16.0312,
-        'lng' => 108.1885
-    ],
-    [
-        'dia_diem' => 'Phường Thanh Khê Đông, Quận Thanh Khê, Đà Nẵng',
-        'lat' => 16.0704,
-        'lng' => 108.1917
-    ],
+            [
+                'dia_diem' => 'Phường Hòa An, Quận Cẩm Lệ, Đà Nẵng',
+                'lat' => 16.0312,
+                'lng' => 108.1885
+            ],
+            [
+                'dia_diem' => 'Phường Thanh Khê Đông, Quận Thanh Khê, Đà Nẵng',
+                'lat' => 16.0704,
+                'lng' => 108.1917
+            ],
 
-    [
-        'dia_diem' => 'Phường An Hải Bắc, Quận Sơn Trà, Đà Nẵng',
-        'lat' => 16.0672,
-        'lng' => 108.2365
-    ],
+            [
+                'dia_diem' => 'Phường An Hải Bắc, Quận Sơn Trà, Đà Nẵng',
+                'lat' => 16.0672,
+                'lng' => 108.2365
+            ],
 
-    // =========================
-    // HÀ NỘI
-    // =========================
-    [
-        'dia_diem' => 'Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội',
-        'lat' => 21.0368,
-        'lng' => 105.7902
-    ],
-    [
-        'dia_diem' => 'Phường Láng Hạ, Quận Đống Đa, Hà Nội',
-        'lat' => 21.0147,
-        'lng' => 105.8142
-    ],
-    [
-        'dia_diem' => 'Phường Minh Khai, Quận Hai Bà Trưng, Hà Nội',
-        'lat' => 20.9987,
-        'lng' => 105.8635
-    ],
+            // =========================
+            // HÀ NỘI
+            // =========================
+            [
+                'dia_diem' => 'Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội',
+                'lat' => 21.0368,
+                'lng' => 105.7902
+            ],
+            [
+                'dia_diem' => 'Phường Láng Hạ, Quận Đống Đa, Hà Nội',
+                'lat' => 21.0147,
+                'lng' => 105.8142
+            ],
+            [
+                'dia_diem' => 'Phường Minh Khai, Quận Hai Bà Trưng, Hà Nội',
+                'lat' => 20.9987,
+                'lng' => 105.8635
+            ],
 
-    // =========================
-    // HẢI PHÒNG
-    // =========================
-    [
-        'dia_diem' => 'Phường Lạch Tray, Quận Ngô Quyền, Hải Phòng',
-        'lat' => 20.8449,
-        'lng' => 106.6881
-    ],
+            // =========================
+            // HẢI PHÒNG
+            // =========================
+            [
+                'dia_diem' => 'Phường Lạch Tray, Quận Ngô Quyền, Hải Phòng',
+                'lat' => 20.8449,
+                'lng' => 106.6881
+            ],
 
-    // =========================
-    // QUẢNG NINH
-    // =========================
-    [
-        'dia_diem' => 'Phường Bãi Cháy, TP Hạ Long, Quảng Ninh',
-        'lat' => 20.9511,
-        'lng' => 107.0438
-    ],
+            // =========================
+            // QUẢNG NINH
+            // =========================
+            [
+                'dia_diem' => 'Phường Bãi Cháy, TP Hạ Long, Quảng Ninh',
+                'lat' => 20.9511,
+                'lng' => 107.0438
+            ],
 
-    // =========================
-    // BẮC NINH
-    // =========================
-    [
-        'dia_diem' => 'Phường Võ Cường, TP Bắc Ninh, Bắc Ninh',
-        'lat' => 21.1861,
-        'lng' => 106.0763
-    ],
+            // =========================
+            // BẮC NINH
+            // =========================
+            [
+                'dia_diem' => 'Phường Võ Cường, TP Bắc Ninh, Bắc Ninh',
+                'lat' => 21.1861,
+                'lng' => 106.0763
+            ],
 
-    // =========================
-    // NGHỆ AN
-    // =========================
-    [
-        'dia_diem' => 'Phường Hưng Bình, TP Vinh, Nghệ An',
-        'lat' => 18.6796,
-        'lng' => 105.6813
-    ],
+            // =========================
+            // NGHỆ AN
+            // =========================
+            [
+                'dia_diem' => 'Phường Hưng Bình, TP Vinh, Nghệ An',
+                'lat' => 18.6796,
+                'lng' => 105.6813
+            ],
 
-    // =========================
-    // HUẾ
-    // =========================
-    [
-        'dia_diem' => 'Phường Phú Hội, TP Huế, Thừa Thiên Huế',
-        'lat' => 16.4637,
-        'lng' => 107.5909
-    ],
+            // =========================
+            // HUẾ
+            // =========================
+            [
+                'dia_diem' => 'Phường Phú Hội, TP Huế, Thừa Thiên Huế',
+                'lat' => 16.4637,
+                'lng' => 107.5909
+            ],
 
-    // =========================
-    // QUẢNG NAM
-    // =========================
-    [
-        'dia_diem' => 'Phường Minh An, TP Hội An, Quảng Nam',
-        'lat' => 15.8801,
-        'lng' => 108.3380
-    ],
+            // =========================
+            // QUẢNG NAM
+            // =========================
+            [
+                'dia_diem' => 'Phường Minh An, TP Hội An, Quảng Nam',
+                'lat' => 15.8801,
+                'lng' => 108.3380
+            ],
 
-    // =========================
-    // BÌNH ĐỊNH
-    // =========================
-    [
-        'dia_diem' => 'Phường Ghềnh Ráng, TP Quy Nhơn, Bình Định',
-        'lat' => 13.7563,
-        'lng' => 109.2167
-    ],
+            // =========================
+            // BÌNH ĐỊNH
+            // =========================
+            [
+                'dia_diem' => 'Phường Ghềnh Ráng, TP Quy Nhơn, Bình Định',
+                'lat' => 13.7563,
+                'lng' => 109.2167
+            ],
 
-    // =========================
-    // ĐẮK LẮK
-    // =========================
-    [
-        'dia_diem' => 'Phường Tân Lợi, TP Buôn Ma Thuột, Đắk Lắk',
-        'lat' => 12.6797,
-        'lng' => 108.0382
-    ],
+            // =========================
+            // ĐẮK LẮK
+            // =========================
+            [
+                'dia_diem' => 'Phường Tân Lợi, TP Buôn Ma Thuột, Đắk Lắk',
+                'lat' => 12.6797,
+                'lng' => 108.0382
+            ],
 
-    // =========================
-    // GIA LAI
-    // =========================
-    [
-        'dia_diem' => 'Phường Diên Hồng, TP Pleiku, Gia Lai',
-        'lat' => 13.9833,
-        'lng' => 108.0000
-    ],
+            // =========================
+            // GIA LAI
+            // =========================
+            [
+                'dia_diem' => 'Phường Diên Hồng, TP Pleiku, Gia Lai',
+                'lat' => 13.9833,
+                'lng' => 108.0000
+            ],
 
-    // =========================
-    // HỒ CHÍ MINH
-    // =========================
-    [
-        'dia_diem' => 'Phường 13, Quận Tân Bình, Hồ Chí Minh',
-        'lat' => 10.8012,
-        'lng' => 106.6401
-    ],
-    [
-        'dia_diem' => 'Phường Linh Trung, TP Thủ Đức, Hồ Chí Minh',
-        'lat' => 10.8701,
-        'lng' => 106.8032
-    ],
-    [
-        'dia_diem' => 'Phường Hiệp Bình Chánh, TP Thủ Đức, Hồ Chí Minh',
-        'lat' => 10.8423,
-        'lng' => 106.7319
-    ],
-    [
-        'dia_diem' => 'Phường 5, Quận Gò Vấp, Hồ Chí Minh',
-        'lat' => 10.8391,
-        'lng' => 106.6698
-    ],
+            // =========================
+            // HỒ CHÍ MINH
+            // =========================
+            [
+                'dia_diem' => 'Phường 13, Quận Tân Bình, Hồ Chí Minh',
+                'lat' => 10.8012,
+                'lng' => 106.6401
+            ],
+            [
+                'dia_diem' => 'Phường Linh Trung, TP Thủ Đức, Hồ Chí Minh',
+                'lat' => 10.8701,
+                'lng' => 106.8032
+            ],
+            [
+                'dia_diem' => 'Phường Hiệp Bình Chánh, TP Thủ Đức, Hồ Chí Minh',
+                'lat' => 10.8423,
+                'lng' => 106.7319
+            ],
+            [
+                'dia_diem' => 'Phường 5, Quận Gò Vấp, Hồ Chí Minh',
+                'lat' => 10.8391,
+                'lng' => 106.6698
+            ],
 
-    // =========================
-    // BÌNH DƯƠNG
-    // =========================
-    [
-        'dia_diem' => 'Phường Phú Hòa, TP Thủ Dầu Một, Bình Dương',
-        'lat' => 11.0042,
-        'lng' => 106.6504
-    ],
+            // =========================
+            // BÌNH DƯƠNG
+            // =========================
+            [
+                'dia_diem' => 'Phường Phú Hòa, TP Thủ Dầu Một, Bình Dương',
+                'lat' => 11.0042,
+                'lng' => 106.6504
+            ],
 
-    // =========================
-    // ĐỒNG NAI
-    // =========================
-    [
-        'dia_diem' => 'Phường Tân Hiệp, TP Biên Hòa, Đồng Nai',
-        'lat' => 10.9574,
-        'lng' => 106.8426
-    ],
+            // =========================
+            // ĐỒNG NAI
+            // =========================
+            [
+                'dia_diem' => 'Phường Tân Hiệp, TP Biên Hòa, Đồng Nai',
+                'lat' => 10.9574,
+                'lng' => 106.8426
+            ],
 
-    // =========================
-    // CẦN THƠ
-    // =========================
-    [
-        'dia_diem' => 'Phường Xuân Khánh, Quận Ninh Kiều, Cần Thơ',
-        'lat' => 10.0301,
-        'lng' => 105.7694
-    ],
+            // =========================
+            // CẦN THƠ
+            // =========================
+            [
+                'dia_diem' => 'Phường Xuân Khánh, Quận Ninh Kiều, Cần Thơ',
+                'lat' => 10.0301,
+                'lng' => 105.7694
+            ],
 
-    // =========================
-    // AN GIANG
-    // =========================
-    [
-        'dia_diem' => 'Phường Mỹ Bình, TP Long Xuyên, An Giang',
-        'lat' => 10.3864,
-        'lng' => 105.4352
-    ],
+            // =========================
+            // AN GIANG
+            // =========================
+            [
+                'dia_diem' => 'Phường Mỹ Bình, TP Long Xuyên, An Giang',
+                'lat' => 10.3864,
+                'lng' => 105.4352
+            ],
 
-    // =========================
-    // KIÊN GIANG
-    // =========================
-    [
-        'dia_diem' => 'Phường Vĩnh Thanh, TP Rạch Giá, Kiên Giang',
-        'lat' => 10.0125,
-        'lng' => 105.0809
-    ],
-];
+            // =========================
+            // KIÊN GIANG
+            // =========================
+            [
+                'dia_diem' => 'Phường Vĩnh Thanh, TP Rạch Giá, Kiên Giang',
+                'lat' => 10.0125,
+                'lng' => 105.0809
+            ],
+        ];
 
         function randomizeLatLng($lat, $lng)
         {
@@ -307,7 +306,7 @@ $locations = [
 
                 'Gạo' => ['posts/gao_cho.jpg', 'posts/gao_1_cho.jpg', 'posts/gao_2_cho.jpg', 'posts/gao_3_cho.jpg'],
                 'Thùng Mì tôm' => ['posts/mi_tom_1_cho.jpg', 'posts/mi_tom_cho.jpg', 'posts/mi_tom_2_cho.jpg'],
-                'Gạo + Mì' => [ 'posts/gao_cho.jpg', 'posts/mi_tom_1_cho.jpg'],
+                'Gạo + Mì' => ['posts/gao_cho.jpg', 'posts/mi_tom_1_cho.jpg'],
                 'Rau củ' => ['posts/rau_cho.jpg'],
                 'Sữa' => ['posts/sua_cho.jpg'],
                 'Nhu yếu phẩm' => ['posts/nhu_yeu_pham_cho.jpg'],
@@ -468,6 +467,17 @@ $locations = [
                 'Xe máy',
                 'Xe đạp',
             ];
+            $unitItems = [
+                    'Bàn học' => 'bộ',
+                    'Ghế học sinh' => 'chiếc',
+                    'Quạt điện' => 'cái',
+                    'Bếp gas' => 'bộ',
+                    'Nồi cơm' => 'cái',
+                    'Tủ lạnh' => 'cái',
+                    'Máy giặt' => 'cái',
+                    'Giường' => 'chiếc',
+                    'Tủ quần áo' => 'cái',
+                ];
             $tenChuDe = Arr::random($chuDes);
             $diaDiem = $location['dia_diem'];
 
@@ -517,7 +527,59 @@ $locations = [
                 $selectedExtra = Arr::random($extra, rand(1, min(2, count($extra))));
                 $take = rand(3, 6);
                 $qty = rand(1, 10);
-                $moTa = "Mình cần khoảng {$qty} {$tenChuDe}, {$randomNoise}. "
+
+                $foodItems = [
+                    'Gạo',
+                    'Thùng Mì tôm',
+                    'Gạo + Mì',
+                    'Rau củ',
+                    'Sữa',
+                    'Thực phẩm',
+                    'Nhu yếu phẩm',
+                ];
+
+                $vehicleItems = [
+                    'Xe máy',
+                    'Xe đạp',
+                ];
+               
+                $descriptionQty = '';
+
+                if (in_array($tenChuDe, $foodItems)) {
+
+                    $foodTexts = [
+                        "một ít {$tenChuDe}",
+                        "một số {$tenChuDe}",
+                        "vài phần {$tenChuDe}",
+                    ];
+
+                    if ($tenChuDe === 'Gạo') {
+                        $foodTexts = [
+                            "{$qty}kg gạo",
+                            "một ít gạo",
+                        ];
+                    }
+
+                    if ($tenChuDe === 'Sữa') {
+                        $foodTexts = [
+                            "{$qty} hộp sữa",
+                            "một ít sữa",
+                        ];
+                    }
+
+                    $descriptionQty = Arr::random($foodTexts);
+                } elseif (in_array($tenChuDe, $vehicleItems)) {
+
+                    $descriptionQty = "{$qty} chiếc {$tenChuDe}";
+                } elseif (isset($unitItems[$tenChuDe])) {
+
+                    $descriptionQty = "{$qty} {$unitItems[$tenChuDe]} {$tenChuDe}";
+                } else {
+
+                    $descriptionQty = "{$qty} {$tenChuDe}";
+                }
+
+                $moTa = "Mình cần {$descriptionQty}, {$randomNoise}. "
                     . implode(' ', array_merge(
                         (array) $selectedSentences,
                         (array) $selectedExtra
@@ -543,12 +605,76 @@ $locations = [
                     "không còn nhu cầu",
                     "còn khá ổn",
                 ];
+                
                 $selectedSentences = Arr::random($sentences, rand(1, min(3, count($sentences))));
 
                 $selectedExtra = Arr::random($extra, rand(1, min(2, count($extra))));
                 $randomNoise = Arr::random($noise);
                 $qty = rand(1, 10);
-                $moTa = "Mình có khoảng {$qty} {$tenChuDe}, {$randomNoise}. "
+
+                $foodItems = [
+                    'Gạo',
+                    'Thùng Mì tôm',
+                    'Gạo + Mì',
+                    'Rau củ',
+                    'Sữa',
+                    'Thực phẩm',
+                    'Nhu yếu phẩm',
+                ];
+
+                $vehicleItems = [
+                    'Xe máy',
+                    'Xe đạp',
+                ];
+                
+                $descriptionQty = '';
+
+                if (in_array($tenChuDe, $foodItems)) {
+
+                    $foodTexts = [
+                        "một ít {$tenChuDe}",
+                        "một số {$tenChuDe}",
+                        "vài phần {$tenChuDe}",
+                        "khá nhiều {$tenChuDe}",
+                    ];
+
+                    if ($tenChuDe === 'Gạo') {
+                        $foodTexts = [
+                            "{$qty}kg gạo",
+                            "một ít gạo",
+                            "bao gạo còn dư",
+                        ];
+                    }
+
+                    if ($tenChuDe === 'Thùng Mì tôm') {
+                        $foodTexts = [
+                            "{$qty} thùng mì tôm",
+                            "một số thùng mì",
+                            "mì tôm còn dư",
+                        ];
+                    }
+
+                    if ($tenChuDe === 'Sữa') {
+                        $foodTexts = [
+                            "một số hộp sữa",
+                            "{$qty} hộp sữa",
+                            "sữa còn dùng tốt",
+                        ];
+                    }
+
+                    $descriptionQty = Arr::random($foodTexts);
+                } elseif (in_array($tenChuDe, $vehicleItems)) {
+
+                    $descriptionQty = "{$qty} chiếc {$tenChuDe}";
+                } elseif (isset($unitItems[$tenChuDe])) {
+
+                    $descriptionQty = "{$qty} {$unitItems[$tenChuDe]} {$tenChuDe}";
+                } else {
+
+                    $descriptionQty = "{$qty} {$tenChuDe}";
+                }
+
+                $moTa = "Mình có {$descriptionQty}, {$randomNoise}. "
                     . implode(' ', array_merge(
                         (array) $selectedSentences,
                         (array) $selectedExtra,
@@ -657,6 +783,5 @@ $locations = [
         if (!empty($comments)) {
             DB::table('binh_luan_bai_dang')->insert($comments);
         }
-
     }
 }

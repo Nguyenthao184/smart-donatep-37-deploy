@@ -22,7 +22,7 @@ class AiMatchingService
      * @return array
      */
     public function match(array $payload, string $endpoint = 'matches'): array
-    {
+    {        
         // 🔒 Chỉ cho phép 2 endpoint
         if (!in_array($endpoint, ['matches', 'related'], true)) {
             $endpoint = 'matches';
