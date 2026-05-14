@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Notifications\AdminReviewRequiredNotification;
 use App\Notifications\WithdrawRequestStatusNotification;
+use App\Http\Requests\Withdraw\StoreWithdrawRequest;
+use App\Http\Requests\Withdraw\ConfirmWithdrawRequest;
+use App\Http\Requests\Withdraw\RejectWithdrawRequest;
 
 class WithdrawRequestController extends Controller
 {
@@ -47,14 +50,8 @@ class WithdrawRequestController extends Controller
     }
 
     // POST /withdraw-requests
-    public function store(Request $request)
+    public function store(StoreWithdrawRequest $request)
     {
-        $request->validate([
-            'chien_dich_gay_quy_id' => 'required|exists:chien_dich_gay_quy,id',
-            'so_tien' => 'required|numeric|min:1000',
-            'mo_ta' => 'nullable|string|max:255'
-        ]);
-
         $orgId = auth()->user()->toChuc->id;
 
         $campaign = ChienDichGayQuy::where('id', $request->chien_dich_gay_quy_id)
@@ -149,14 +146,8 @@ class WithdrawRequestController extends Controller
     }
 
     // PUT /admin/withdraw-requests/{id}/confirm
-    public function confirm(Request $request, $id)
+    public function confirm(ConfirmWithdrawRequest $request, $id)
     {
-        $request->validate([
-            'ma_giao_dich_ngan_hang' => 'required|string|max:255',
-            'ngay_giao_dich' => 'required|date',
-            'ghi_chu_admin' => 'nullable|string'
-        ]);
-
         $giaoDich = GiaoDichQuy::with(['chienDich.toChuc.user'])
             ->where('id', $id)
             ->where('loai_giao_dich', 'RUT')
@@ -177,12 +168,8 @@ class WithdrawRequestController extends Controller
     }
 
     // PUT /admin/withdraw-requests/{id}/reject
-    public function reject(Request $request, $id)
+    public function reject(RejectWithdrawRequest $request, $id)
     {
-        $request->validate([
-            'ghi_chu_admin' => 'required|string'
-        ]);
-
         $giaoDich = GiaoDichQuy::with(['chienDich.toChuc.user'])
             ->where('id', $id)
             ->where('loai_giao_dich', 'RUT')
