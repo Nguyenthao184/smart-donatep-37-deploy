@@ -55,11 +55,16 @@ class RuleBasedFraudDetector
         }
 
         // 🔴 RULE 2: Duplicate/similar content
-        $lastPosts = DB::table('bai_dang')
+        $lastPostsQuery = DB::table('bai_dang')
             ->where('nguoi_dung_id', $userId)
             ->orderByDesc('created_at')
-            ->limit(5)
-            ->get(['tieu_de', 'mo_ta']);
+            ->limit(5);
+
+        if (!empty($postData['id'])) {
+            $lastPostsQuery->where('id', '!=', intval($postData['id']));
+        }
+
+        $lastPosts = $lastPostsQuery->get(['tieu_de', 'mo_ta']);
 
         if ($lastPosts->count() > 0) {
             $currentContent = strtolower(
