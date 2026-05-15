@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\CanhBaoGianLan;
 use App\Models\XacMinhToChuc;
+use App\Traits\HandlesCloudinaryMedia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AdminUserController extends Controller
 {
+    use HandlesCloudinaryMedia;
+
     private const POST_ALERT_META_PREFIX = 'USER_REPORT|post:%';
 
     /**
@@ -225,11 +228,11 @@ class AdminUserController extends Controller
                 'ten_to_chuc' => $license->ten_to_chuc,
                 'ma_so_thue' => $license->ma_so_thue,
                 'nguoi_dai_dien' => $license->nguoi_dai_dien,
-                'giay_phep' => asset('storage/' . $license->giay_phep),
+                'giay_phep' => $this->resolveMediaUrl($license->giay_phep),
                 'mo_ta' => $license->mo_ta,
                 'dia_chi' => $license->dia_chi,
                 'so_dien_thoai' => $license->so_dien_thoai,
-                'logo' => $license->logo ? asset('storage/' . $license->logo) : null,
+                'logo' => $this->resolveMediaUrl($license->logo),
                 'loai_hinh' => $license->loai_hinh,
                 'trang_thai' => $license->trang_thai,
                 'created_at' => $license->created_at,
@@ -237,3 +240,4 @@ class AdminUserController extends Controller
         ]);
     }
 }
+
