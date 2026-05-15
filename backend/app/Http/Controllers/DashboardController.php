@@ -75,7 +75,7 @@ class DashboardController extends Controller
 
         $data = $query->selectRaw("
             SUM(CASE WHEN loai_giao_dich = 'UNG_HO' THEN so_tien ELSE 0 END) as total_received,
-            SUM(CASE WHEN loai_giao_dich = 'RUT' THEN so_tien ELSE 0 END) as total_spent
+            SUM(CASE WHEN loai_giao_dich = 'RUT' AND trang_thai = 'DA_DUYET' THEN so_tien ELSE 0 END) as total_spent
         ")->first();
 
         $received = (float) $data->total_received;
@@ -178,6 +178,17 @@ class DashboardController extends Controller
                     ->orOn('cd.id', '=', 'gd.chien_dich_gay_quy_id');
             })
             ->where('cd.to_chuc_id', $orgId)
+            ->where(function ($query) {
+                $query
+                    // tất cả giao dịch ủng hộ
+                    ->where('gd.loai_giao_dich', 'UNG_HO')
+
+                    // giao dịch rút phải được duyệt
+                    ->orWhere(function ($q) {
+                        $q->where('gd.loai_giao_dich', 'RUT')
+                        ->where('gd.trang_thai', 'DA_DUYET');
+                    });
+            })
             ->select(
                 'gd.so_tien',
                 'gd.loai_giao_dich',
