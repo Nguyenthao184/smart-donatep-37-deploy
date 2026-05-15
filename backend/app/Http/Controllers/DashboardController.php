@@ -99,7 +99,7 @@ class DashboardController extends Controller
             ->selectRaw("
                 MONTH(created_at) as month,
                 SUM(CASE WHEN loai_giao_dich = 'UNG_HO' THEN so_tien ELSE 0 END) as tien_nhan,
-                SUM(CASE WHEN loai_giao_dich = 'RUT' THEN so_tien ELSE 0 END) as tien_chi
+                SUM(CASE WHEN loai_giao_dich = 'RUT' AND trang_thai = 'DA_DUYET' THEN so_tien ELSE 0 END) as tien_chi
             ")
             ->where('tai_khoan_gay_quy_id', $orgId)
             ->groupBy('month')

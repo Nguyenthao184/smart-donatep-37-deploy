@@ -531,32 +531,32 @@ class OrganizationController extends Controller
         }
     }
 
-    public function testCloudinary(Request $request)
-    {
-        try {
+    // public function testCloudinary(Request $request)
+    // {
+    //     try {
 
-            if (!$request->hasFile('image')) {
-                return response()->json([
-                    'error' => 'Không có file'
-                ], 400);
-            }
+    //         if (!$request->hasFile('image')) {
+    //             return response()->json([
+    //                 'error' => 'Không có file'
+    //             ], 400);
+    //         }
 
-            $url = $this->uploadToCloudinary(
-                $request->file('image'),
-                'test_uploads'
-            );
+    //         $url = $this->uploadToCloudinary(
+    //             $request->file('image'),
+    //             'test_uploads'
+    //         );
 
-            return response()->json([
-                'success' => true,
-                'url' => $url
-            ]);
+    //         return response()->json([
+    //             'success' => true,
+    //             'url' => $url
+    //         ]);
 
-        } catch (\Throwable $e) {
+    //     } catch (\Throwable $e) {
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 }

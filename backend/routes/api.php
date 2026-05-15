@@ -29,7 +29,7 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::get('/map/campaigns', [CampaignController::class, 'map']);
-Route::post('/test-cloudinary', [OrganizationController::class, 'testCloudinary']);
+//Route::post('/test-cloudinary', [OrganizationController::class, 'testCloudinary']);
 
 // Feed - guest có thể xem danh sách/chi tiết
 Route::get('/posts', [PostController::class, 'index']);
