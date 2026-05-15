@@ -53,10 +53,11 @@ class CampaignFraudDetectionService
         }
 
         $isPending = $campaign->trang_thai === 'CHO_XU_LY';
+        $isNewCampaign = $this->isCampaignNew($campaign);
         $reasons = $this->buildCampaignReasons(
             $feature,
             !$isPending,
-            !$isPending
+            !$isPending && !$isNewCampaign
         );
 
         if ($isPending && $reasons === []) {
@@ -217,12 +218,21 @@ class CampaignFraudDetectionService
                 postId: null,
                 reason: (string) ($alert->loai_canh_bao ?? $alert->loai_gian_lan ?? 'campaign_fraud'),
                 description: $alert->ly_do,
-                scenario: AdminViolationDetectedNotification::SCENARIO_AI,
                 userName: $ownerName,
                 violationCode: (string) ($alert->violation_code ?? null),
                 mucRuiRo: (string) ($alert->muc_rui_ro ?? null),
             ));
         }
+    }
+
+   
+    private function isCampaignNew(ChienDichGayQuy $campaign): bool
+    {
+        if (!$campaign->created_at) {
+            return true;
+        }
+
+        return $campaign->created_at->diffInDays(now()) < 10;
     }
 }
 
