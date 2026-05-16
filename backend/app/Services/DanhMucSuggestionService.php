@@ -283,8 +283,6 @@ class DanhMucSuggestionService
             'gia dung',
             'do sinh hoat',
             'vat dung sinh hoat',
-            'ban hoc',
-            'ghe hoc sinh',
             'quat dien',
             'bep gas',
             'noi nieu',
@@ -315,8 +313,6 @@ class DanhMucSuggestionService
             'mất nhà',
             'mất hết đồ',
 
-            'bàn học',
-            'ghế học sinh',
             'quạt điện',
             'bếp gas',
             'nồi niêu',
